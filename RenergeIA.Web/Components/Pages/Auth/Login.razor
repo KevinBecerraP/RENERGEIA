@@ -25,13 +25,14 @@
             }
 
             <form method="post" @formname="login-form">
+                <AntiforgeryToken />
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Correo electrónico</label>
                     <input type="email"
                            class="form-control"
-                           name="Input.Email"
-                           value="@Input.Email"
+                           name="email"
+                           value="@_email"
                            placeholder="usuario@renergeia.com"
                            autocomplete="email"
                            required />
@@ -41,7 +42,7 @@
                     <label class="form-label fw-semibold">Contraseña</label>
                     <input type="password"
                            class="form-control"
-                           name="Input.Password"
+                           name="password"
                            placeholder="••••••••"
                            autocomplete="current-password"
                            required />
@@ -50,7 +51,7 @@
                 <div class="mb-4 form-check">
                     <input type="checkbox"
                            class="form-check-input"
-                           name="Input.RememberMe"
+                           name="rememberMe"
                            id="rememberMe" />
                     <label class="form-check-label text-muted small" for="rememberMe">
                         Mantener sesión iniciada
@@ -73,10 +74,8 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
-
     private string? ErrorMessage;
+    private string _email = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,20 +87,20 @@
 
         if (HttpMethods.IsPost(HttpContext.Request.Method))
         {
+            var form = HttpContext.Request.Form;
+            var email = form["email"].ToString();
+            var password = form["password"].ToString();
+            var rememberMe = form["rememberMe"].ToString() == "on";
+
+            _email = email;
+
             var result = await SignInManager.PasswordSignInAsync(
-                Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                email, password, rememberMe, lockoutOnFailure: false);
 
             if (result.Succeeded)
                 Navigation.NavigateTo("/", replace: true);
             else
                 ErrorMessage = "Correo o contraseña incorrectos. Intenta de nuevo.";
         }
-    }
-
-    private sealed class InputModel
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public bool RememberMe { get; set; }
     }
 }

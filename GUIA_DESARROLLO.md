@@ -633,9 +633,182 @@ SELECT Name FROM AspNetRoles ORDER BY Name;
 
 ---
 
-## ETAPA 4 — Página de Login (UI)
+## ETAPA 4 — Página de Login y Verificación de Autenticación
 
-> Esta sección se completa a continuación...
+**Objetivo:** Crear la interfaz de login, conectarla con Identity, y verificar que el flujo completo (login → home → logout) funcione correctamente.
+
+### 4.1 Archivos creados
+
+Se crearon los siguientes componentes Blazor SSR (sin `@rendermode`, para que puedan acceder a `HttpContext` y manejar cookies):
+
+| Archivo | Propósito |
+|---|---|
+| `RenergeIA.Web/Components/Pages/Auth/Login.razor` | Página de inicio de sesión |
+| `RenergeIA.Web/Components/Pages/Auth/Logout.razor` | Cierra sesión y redirige |
+| `RenergeIA.Web/Components/RedirectToLogin.razor` | Redirige al login si no autenticado |
+
+### 4.2 Login.razor — Página de inicio de sesión
+
+**Características:**
+- Ruta: `/login`
+- Layout propio: `@layout LoginLayout` (sin sidebar)
+- Detecta si ya está autenticado y redirige a `/`
+- Al recibir POST, lee credenciales de `HttpContext.Request.Form`
+- Usa `SignInManager.PasswordSignInAsync` para validar
+- Muestra mensaje de error si las credenciales son incorrectas
+- Mantiene el correo en el campo si falla el login
+
+**Puntos técnicos clave:**
+
+```razor
+<form method="post" @formname="login-form">
+    <AntiforgeryToken />
+    ...
+</form>
+```
+
+> Por qué los dos atributos:
+> - `@formname="login-form"` — Blazor SSR lo **exige** para identificar cuál form se está enviando
+> - `<AntiforgeryToken />` — En .NET 10, `@formname` NO inyecta el token automáticamente; hay que agregarlo explícito
+>
+> Si falta `@formname` → error "The POST request does not specify which form is being submitted"
+> Si falta `<AntiforgeryToken />` → error "A valid antiforgery token was not provided with the request"
+
+Lectura de datos del form (sin `[SupplyParameterFromForm]`, directo desde HttpContext):
+
+```csharp
+if (HttpMethods.IsPost(HttpContext.Request.Method))
+{
+    var form = HttpContext.Request.Form;
+    var email = form["email"].ToString();
+    var password = form["password"].ToString();
+    var rememberMe = form["rememberMe"].ToString() == "on";
+
+    var result = await SignInManager.PasswordSignInAsync(
+        email, password, rememberMe, lockoutOnFailure: false);
+
+    if (result.Succeeded)
+        Navigation.NavigateTo("/", replace: true);
+    else
+        ErrorMessage = "Correo o contraseña incorrectos. Intenta de nuevo.";
+}
+```
+
+### 4.3 Logout.razor — Cerrar sesión
+
+```csharp
+protected override async Task OnInitializedAsync()
+{
+    await SignInManager.SignOutAsync();
+    Navigation.NavigateTo("/login", replace: true);
+}
+```
+
+### 4.4 RedirectToLogin.razor — Componente de redirección
+
+Usado en `Routes.razor` dentro del bloque `<NotAuthorized>`. Navega a `/login` en `OnInitialized`.
+
+### 4.5 Routes.razor — Protección de rutas
+
+```razor
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+        </Found>
+    </Router>
+</CascadingAuthenticationState>
+```
+
+### 4.6 LoginLayout.razor — Layout sin sidebar para la página de login
+
+```razor
+@inherits LayoutComponentBase
+@Body
+```
+
+### 4.7 MainLayout.razor — Muestra usuario y botón Salir
+
+```razor
+<AuthorizeView>
+    <Authorized>
+        <span class="text-muted small">@context.User.Identity?.Name</span>
+        <a href="/logout" class="btn btn-sm btn-outline-secondary">Salir</a>
+    </Authorized>
+</AuthorizeView>
+```
+
+### 4.8 Home.razor — Página protegida
+
+```razor
+@page "/"
+@attribute [Authorize]
+```
+
+El atributo `[Authorize]` hace que cualquier usuario no autenticado sea redirigido automáticamente al login.
+
+### 4.9 Configuración del cookie path en Program.cs
+
+Por defecto, Identity redirige a `/Account/Login`. Para cambiar la ruta:
+
+```csharp
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/login";
+    options.LogoutPath = "/logout";
+    options.AccessDeniedPath = "/login";
+});
+```
+
+### 4.10 Errores encontrados y soluciones
+
+| Error | Causa | Solución |
+|---|---|---|
+| `/Account/Login` Not Found | Identity usa esa ruta por defecto | `ConfigureApplicationCookie` con `LoginPath = "/login"` |
+| "A valid antiforgery token was not provided" | `@formname` en .NET 10 no inyecta el token automáticamente | Agregar `<AntiforgeryToken />` explícito dentro del form |
+| "The POST request does not specify which form" | Se quitó `@formname` al intentar el fix anterior | Mantener `@formname` Y agregar `<AntiforgeryToken />` — los dos son necesarios |
+| Warning RZ10012 al compilar | Advertencia de que `<AntiforgeryToken />` no debería usarse con `@formname` | Es solo una advertencia, no un error. Se ignora — el comportamiento es correcto |
+
+### 4.11 Flujo completo verificado
+
+```
+Usuario no autenticado accede a /
+    → [Authorize] detecta que no hay sesión
+    → CascadingAuthenticationState + AuthorizeRouteView
+    → <NotAuthorized> → RedirectToLogin → navega a /login
+
+Usuario ingresa admin@renergeia.com / Admin123! y hace clic en Ingresar
+    → POST a /login con token antiforgery válido
+    → SignInManager.PasswordSignInAsync → Succeeded
+    → Cookie de sesión creada
+    → Navigation.NavigateTo("/") → Home
+
+Home muestra "Bienvenido a RenergeIA" + email en top-right
+
+Usuario hace clic en "Salir"
+    → Navega a /logout
+    → SignInManager.SignOutAsync() → cookie eliminada
+    → Navigation.NavigateTo("/login")
+```
+
+### Checklist Etapa 4 ✓
+
+- [x] `LoginLayout.razor` creado (layout sin sidebar)
+- [x] `Login.razor` creado con diseño visual (fondo degradado oscuro, tarjeta centrada)
+- [x] `Logout.razor` creado
+- [x] `RedirectToLogin.razor` creado
+- [x] `Routes.razor` actualizado con `CascadingAuthenticationState` y `AuthorizeRouteView`
+- [x] `MainLayout.razor` actualizado con nombre de usuario y botón Salir
+- [x] `Home.razor` protegido con `[Authorize]`
+- [x] Cookie path configurado (`/login`, `/logout`)
+- [x] Antiforgery resuelto: `@formname` + `<AntiforgeryToken />` explícito
+- [x] Login verificado: `admin@renergeia.com` / `Admin123!` → redirige a Home
+- [x] Logout verificado: botón "Salir" → redirige a Login
+- [x] Rutas protegidas: acceso directo a `/` sin sesión → redirige a `/login`
 
 ---
 
