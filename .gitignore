@@ -1,38 +1,36 @@
-## .NET
-bin/
-obj/
+## Carpetas de compilación .NET (NO subir al repositorio)
+**/bin/
+**/obj/
+
+## Archivos de Visual Studio
 *.user
 *.suo
 .vs/
 *.swp
 
-## Publish
+## Publicación
 publish/
 out/
 
-## EF Core migrations snapshot temporal
-# (no ignorar las migraciones reales)
-
-## Secretos y configuración local
+## Configuración local y secretos
 appsettings.Local.json
-appsettings.Development.json
 *.pfx
 *.key
+secrets.json
 
 ## Sistema operativo
 .DS_Store
 Thumbs.db
 desktop.ini
 
-## VS Code
+## VS Code (carpeta de configuración local)
 .vscode/
-!.vscode/extensions.json
 
 ## Logs
 *.log
 logs/
 
-## NuGet
+## NuGet local
 *.nupkg
 .nuget/
 packages/
