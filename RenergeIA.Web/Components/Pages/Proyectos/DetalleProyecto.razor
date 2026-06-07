@@ -1,0 +1,159 @@
+@page "/proyectos/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>@(_proyecto?.Nombre ?? "Proyecto") — RenergeIA</PageTitle>
+
+@if (_cargando)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (_proyecto is null)
+{
+    <div class="text-center py-5">
+        <h4 class="text-muted">Proyecto no encontrado</h4>
+        <a href="/proyectos" class="btn btn-primary mt-3">Volver a Proyectos</a>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/proyectos" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <div>
+            <h2 class="mb-0">@_proyecto.Nombre</h2>
+            <span class="text-muted small">@_proyecto.Codigo</span>
+        </div>
+        <span class="badge @BadgeEstado(_proyecto.Estado) ms-2">@NombreEstado(_proyecto.Estado)</span>
+    </div>
+
+    <div class="row g-4">
+        <!-- Info general -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header fw-bold" style="background: #1b2838; color: white;">
+                    Información General
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-muted">Cliente</dt>
+                        <dd class="col-sm-7">@_proyecto.Cliente</dd>
+
+                        <dt class="col-sm-5 text-muted">Ubicación</dt>
+                        <dd class="col-sm-7">@_proyecto.Ubicacion, @_proyecto.Pais</dd>
+
+                        <dt class="col-sm-5 text-muted">Capacidad</dt>
+                        <dd class="col-sm-7">@_proyecto.CapacidadKWp kWp</dd>
+
+                        <dt class="col-sm-5 text-muted">Presupuesto</dt>
+                        <dd class="col-sm-7">@_proyecto.PresupuestoContractual.ToString("N0") COP</dd>
+
+                        <dt class="col-sm-5 text-muted">Descripción</dt>
+                        <dd class="col-sm-7">@(string.IsNullOrEmpty(_proyecto.Descripcion) ? "—" : _proyecto.Descripcion)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cronograma -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header fw-bold" style="background: #1b2838; color: white;">
+                    Cronograma
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6 text-muted">Inicio planificado</dt>
+                        <dd class="col-sm-6">@_proyecto.FechaInicioPlanificada.ToString("dd/MM/yyyy")</dd>
+
+                        <dt class="col-sm-6 text-muted">Fin planificado</dt>
+                        <dd class="col-sm-6">@_proyecto.FechaFinPlanificada.ToString("dd/MM/yyyy")</dd>
+
+                        <dt class="col-sm-6 text-muted">Inicio real</dt>
+                        <dd class="col-sm-6">@(_proyecto.FechaInicioReal?.ToString("dd/MM/yyyy") ?? "—")</dd>
+
+                        <dt class="col-sm-6 text-muted">Fin real</dt>
+                        <dd class="col-sm-6">@(_proyecto.FechaFinReal?.ToString("dd/MM/yyyy") ?? "—")</dd>
+
+                        <dt class="col-sm-6 text-muted">Duración planificada</dt>
+                        <dd class="col-sm-6">@((_proyecto.FechaFinPlanificada - _proyecto.FechaInicioPlanificada).Days) días</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulos disponibles (próximamente) -->
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header fw-bold" style="background: #1b2838; color: white;">
+                    Módulos del Proyecto
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var modulo in _modulos)
+                        {
+                            <div class="col-md-3 col-sm-6">
+                                <div class="card border text-center p-3 h-100 @(modulo.Disponible ? "" : "opacity-50")">
+                                    <div style="font-size: 2rem;">@modulo.Icono</div>
+                                    <div class="fw-semibold small mt-1">@modulo.Nombre</div>
+                                    @if (!modulo.Disponible)
+                                    {
+                                        <div class="text-muted" style="font-size: 0.7rem;">Próximamente</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Proyecto? _proyecto;
+    private bool _cargando = true;
+
+    private readonly List<(string Nombre, string Icono, bool Disponible)> _modulos =
+    [
+        ("WBS / Actividades",   "📄", false),
+        ("Informe Diario",      "📋", false),
+        ("Personal",            "👷", false),
+        ("Equipos",             "⚙️",  false),
+        ("Documentos",          "📁", false),
+        ("Costos",              "💰", false),
+        ("No Conformidades",    "🚩", false),
+        ("Restricciones",       "🚫", false),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(Id);
+        _cargando = false;
+    }
+
+    private static string BadgeEstado(EstadoProyecto estado) => estado switch
+    {
+        EstadoProyecto.Planificacion => "bg-secondary",
+        EstadoProyecto.EnEjecucion   => "bg-success",
+        EstadoProyecto.Suspendido    => "bg-warning text-dark",
+        EstadoProyecto.Completado    => "bg-primary",
+        EstadoProyecto.Cancelado     => "bg-danger",
+        _                            => "bg-secondary"
+    };
+
+    private static string NombreEstado(EstadoProyecto estado) => estado switch
+    {
+        EstadoProyecto.Planificacion => "Planificación",
+        EstadoProyecto.EnEjecucion   => "En Ejecución",
+        EstadoProyecto.Suspendido    => "Suspendido",
+        EstadoProyecto.Completado    => "Completado",
+        EstadoProyecto.Cancelado     => "Cancelado",
+        _                            => estado.ToString()
+    };
+}

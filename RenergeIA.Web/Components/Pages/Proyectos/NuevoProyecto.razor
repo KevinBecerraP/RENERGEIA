@@ -1,0 +1,189 @@
+@page "/proyectos/nuevo"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Nuevo Proyecto — RenergeIA</PageTitle>
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/proyectos" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+    <h2 class="mb-0">Nuevo Proyecto</h2>
+</div>
+
+<div class="card shadow-sm border-0" style="max-width: 800px;">
+    <div class="card-body p-4">
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <EditForm Model="_form" OnValidSubmit="GuardarAsync">
+            <DataAnnotationsValidator />
+
+            <h5 class="text-muted mb-3 border-bottom pb-2">Información General</h5>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_form.Codigo" placeholder="EJ: PV-COL-2026-01" />
+                    <ValidationMessage For="() => _form.Codigo" class="text-danger small" />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Nombre del Proyecto <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_form.Nombre" placeholder="Ej: Planta Solar Norte 5 MWp" />
+                    <ValidationMessage For="() => _form.Nombre" class="text-danger small" />
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Cliente <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_form.Cliente" placeholder="Nombre del cliente" />
+                    <ValidationMessage For="() => _form.Cliente" class="text-danger small" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Capacidad (kWp) <span class="text-danger">*</span></label>
+                    <InputNumber class="form-control" @bind-Value="_form.CapacidadKWp" />
+                    <ValidationMessage For="() => _form.CapacidadKWp" class="text-danger small" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Estado</label>
+                    <InputSelect class="form-select" @bind-Value="_form.Estado">
+                        <option value="@EstadoProyecto.Planificacion">Planificación</option>
+                        <option value="@EstadoProyecto.EnEjecucion">En Ejecución</option>
+                        <option value="@EstadoProyecto.Suspendido">Suspendido</option>
+                        <option value="@EstadoProyecto.Completado">Completado</option>
+                        <option value="@EstadoProyecto.Cancelado">Cancelado</option>
+                    </InputSelect>
+                </div>
+            </div>
+
+            <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Ubicación</h5>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Ubicación <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_form.Ubicacion" placeholder="Ciudad o departamento" />
+                    <ValidationMessage For="() => _form.Ubicacion" class="text-danger small" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">País <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="_form.Pais" placeholder="Colombia" />
+                    <ValidationMessage For="() => _form.Pais" class="text-danger small" />
+                </div>
+            </div>
+
+            <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Cronograma y Presupuesto</h5>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Inicio planificado <span class="text-danger">*</span></label>
+                    <InputDate class="form-control" @bind-Value="_form.FechaInicioPlanificada" />
+                    <ValidationMessage For="() => _form.FechaInicioPlanificada" class="text-danger small" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Fin planificado <span class="text-danger">*</span></label>
+                    <InputDate class="form-control" @bind-Value="_form.FechaFinPlanificada" />
+                    <ValidationMessage For="() => _form.FechaFinPlanificada" class="text-danger small" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Presupuesto Contractual (COP) <span class="text-danger">*</span></label>
+                    <InputNumber class="form-control" @bind-Value="_form.PresupuestoContractual" />
+                    <ValidationMessage For="() => _form.PresupuestoContractual" class="text-danger small" />
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Descripción</label>
+                <InputTextArea class="form-control" @bind-Value="_form.Descripcion" rows="3"
+                               placeholder="Descripción general del proyecto..." />
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4" disabled="@_guardando">
+                    @if (_guardando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    Guardar Proyecto
+                </button>
+                <a href="/proyectos" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private FormModel _form = new();
+    private string? _error;
+    private bool _guardando;
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            var proyecto = new Proyecto
+            {
+                Codigo               = _form.Codigo.Trim(),
+                Nombre               = _form.Nombre.Trim(),
+                Cliente              = _form.Cliente.Trim(),
+                Ubicacion            = _form.Ubicacion.Trim(),
+                Pais                 = _form.Pais.Trim(),
+                CapacidadKWp         = _form.CapacidadKWp,
+                PresupuestoContractual = _form.PresupuestoContractual,
+                FechaInicioPlanificada = _form.FechaInicioPlanificada,
+                FechaFinPlanificada  = _form.FechaFinPlanificada,
+                Estado               = _form.Estado,
+                Descripcion          = _form.Descripcion.Trim(),
+                FechaCreacion        = DateTime.UtcNow
+            };
+
+            Db.Proyectos.Add(proyecto);
+            await Db.SaveChangesAsync();
+
+            Navigation.NavigateTo($"/proyectos/{proyecto.Id}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+            _guardando = false;
+        }
+    }
+
+    private sealed class FormModel
+    {
+        [Required(ErrorMessage = "El código es obligatorio")]
+        [MaxLength(20, ErrorMessage = "Máximo 20 caracteres")]
+        public string Codigo { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        [MaxLength(200, ErrorMessage = "Máximo 200 caracteres")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El cliente es obligatorio")]
+        [MaxLength(200, ErrorMessage = "Máximo 200 caracteres")]
+        public string Cliente { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La ubicación es obligatoria")]
+        public string Ubicacion { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El país es obligatorio")]
+        public string Pais { get; set; } = "Colombia";
+
+        [Range(0.01, 9999999, ErrorMessage = "Debe ser mayor a 0")]
+        public decimal CapacidadKWp { get; set; }
+
+        [Range(0.01, double.MaxValue, ErrorMessage = "Debe ser mayor a 0")]
+        public decimal PresupuestoContractual { get; set; }
+
+        public DateTime FechaInicioPlanificada { get; set; } = DateTime.Today;
+        public DateTime FechaFinPlanificada    { get; set; } = DateTime.Today.AddMonths(6);
+        public EstadoProyecto Estado           { get; set; } = EstadoProyecto.Planificacion;
+        public string Descripcion              { get; set; } = string.Empty;
+    }
+}

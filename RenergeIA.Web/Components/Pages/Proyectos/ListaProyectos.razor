@@ -1,0 +1,96 @@
+@page "/proyectos"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Proyectos — RenergeIA</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Proyectos</h2>
+    <a href="/proyectos/nuevo" class="btn btn-primary">
+        + Nuevo Proyecto
+    </a>
+</div>
+
+@if (_cargando)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Cargando proyectos...</p>
+    </div>
+}
+else if (_proyectos.Count == 0)
+{
+    <div class="text-center py-5">
+        <div style="font-size: 3rem;">&#128736;&#65039;</div>
+        <h5 class="text-muted mt-3">No hay proyectos registrados</h5>
+        <p class="text-muted">Crea el primer proyecto para comenzar.</p>
+        <a href="/proyectos/nuevo" class="btn btn-primary">Crear Proyecto</a>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var p in _proyectos)
+        {
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2"
+                         style="background: #1b2838; color: white;">
+                        <span class="fw-bold small">@p.Codigo</span>
+                        <span class="badge @BadgeEstado(p.Estado)">@NombreEstado(p.Estado)</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title fw-bold mb-1">@p.Nombre</h6>
+                        <p class="text-muted small mb-2">@p.Cliente</p>
+                        <div class="small text-muted">
+                            <div><strong>Ubicación:</strong> @p.Ubicacion, @p.Pais</div>
+                            <div><strong>Capacidad:</strong> @p.CapacidadKWp kWp</div>
+                            <div><strong>Inicio planificado:</strong> @p.FechaInicioPlanificada.ToString("dd/MM/yyyy")</div>
+                            <div><strong>Fin planificado:</strong> @p.FechaFinPlanificada.ToString("dd/MM/yyyy")</div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0 pt-0">
+                        <a href="/proyectos/@p.Id" class="btn btn-sm btn-outline-primary w-100">
+                            Ver detalle
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Proyecto> _proyectos = new();
+    private bool _cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyectos = await Db.Proyectos
+            .OrderByDescending(p => p.FechaCreacion)
+            .ToListAsync();
+        _cargando = false;
+    }
+
+    private static string BadgeEstado(EstadoProyecto estado) => estado switch
+    {
+        EstadoProyecto.Planificacion  => "bg-secondary",
+        EstadoProyecto.EnEjecucion    => "bg-success",
+        EstadoProyecto.Suspendido     => "bg-warning text-dark",
+        EstadoProyecto.Completado     => "bg-primary",
+        EstadoProyecto.Cancelado      => "bg-danger",
+        _                             => "bg-secondary"
+    };
+
+    private static string NombreEstado(EstadoProyecto estado) => estado switch
+    {
+        EstadoProyecto.Planificacion  => "Planificación",
+        EstadoProyecto.EnEjecucion    => "En Ejecución",
+        EstadoProyecto.Suspendido     => "Suspendido",
+        EstadoProyecto.Completado     => "Completado",
+        EstadoProyecto.Cancelado      => "Cancelado",
+        _                             => estado.ToString()
+    };
+}
