@@ -981,6 +981,84 @@ Eliminar            → Confirmación inline → elimina → /proyectos
 
 ---
 
+## ETAPA 6 — Módulo de Personal del Proyecto (CRUD completo)
+
+**Objetivo:** Gestionar las personas vinculadas a cada proyecto: empleados, contratistas, subcontratistas y visitantes.
+
+### 6.1 Archivos creados
+
+| Archivo | Ruta | Propósito |
+|---|---|---|
+| `ListaPersonal.razor` | `Pages/Personal/` | Tabla con filtros de búsqueda, tipo y estado |
+| `FormPersonal.razor` | `Pages/Personal/` | Formulario único para crear y editar |
+
+### 6.2 Rutas del módulo
+
+```
+/proyectos/{id}/personal                    → Lista de personal del proyecto
+/proyectos/{id}/personal/nuevo              → Formulario de creación
+/proyectos/{id}/personal/{personaId}/editar → Formulario de edición
+```
+
+El módulo siempre está vinculado a un proyecto: el `ProyectoId` viaja en la URL, no hay personal "suelto".
+
+### 6.3 Patrón: un formulario para crear y editar
+
+En lugar de tener dos archivos separados (`NuevoPersonal.razor` y `EditarPersonal.razor`), se usa un solo componente con dos rutas:
+
+```razor
+@page "/proyectos/{ProyectoId:int}/personal/nuevo"
+@page "/proyectos/{ProyectoId:int}/personal/{PersonalId:int}/editar"
+```
+
+El componente detecta si está en modo crear o editar:
+```csharp
+private bool _esNuevo => PersonalId is null;
+```
+
+Esto reduce duplicación de código. El mismo formulario, los mismos campos, la misma validación — solo cambia si se hace `Add` o se actualiza el registro existente.
+
+### 6.4 Filtros reactivos en la lista
+
+Los filtros funcionan sin botón "Buscar" — se actualizan al instante usando una propiedad calculada:
+
+```csharp
+private IEnumerable<PersonalProyecto> PersonalFiltrado => _personal
+    .Where(p =>
+        (string.IsNullOrEmpty(_busqueda) || $"{p.Nombre} {p.Apellido} {p.Cargo}".Contains(_busqueda, ...)) &&
+        (string.IsNullOrEmpty(_filtroTipo) || p.TipoPersonal.ToString() == _filtroTipo) &&
+        (string.IsNullOrEmpty(_filtroActivo) || p.Activo.ToString() == _filtroActivo)
+    );
+```
+
+El filtro de estado viene en `"true"` por defecto para mostrar solo activos. Cambiarlo a `""` muestra todos.
+
+### 6.5 Módulo Personal activado en DetalleProyecto
+
+`DetalleProyecto.razor` se actualizó para que los módulos disponibles sean clicables. La lista de módulos ahora incluye la URL de destino:
+
+```csharp
+_modulos =
+[
+    ("Personal",          "👷", true,  $"/proyectos/{Id}/personal"),  // ← disponible
+    ("WBS / Actividades", "📄", false, null),                          // ← próximamente
+    ...
+];
+```
+
+### Checklist Etapa 6 ✓
+
+- [x] `ListaPersonal.razor` — tabla con búsqueda por texto, filtro por tipo y por estado activo/inactivo
+- [x] `FormPersonal.razor` — un solo formulario para crear y editar (dos rutas `@page`)
+- [x] Vinculación correcta por `ProyectoId` en la URL
+- [x] Eliminación con confirmación inline (igual que en Proyectos)
+- [x] Badge de color por tipo: Empleado (azul), Contratista (celeste), Subcontratista (amarillo), Visitante (gris)
+- [x] Estado Activo/Inactivo reflejado en tiempo real en la tabla
+- [x] Módulo Personal clicable desde el detalle del proyecto
+- [x] Creación, edición y cambio de estado probados con datos reales
+
+---
+
 ## Cómo correr el proyecto en cualquier momento
 
 ```powershell

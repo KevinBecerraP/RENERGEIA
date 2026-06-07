@@ -1,0 +1,272 @@
+@page "/proyectos/{ProyectoId:int}/personal/nuevo"
+@page "/proyectos/{ProyectoId:int}/personal/{PersonalId:int}/editar"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>@(_esNuevo ? "Agregar Personal" : "Editar Personal") — RenergeIA</PageTitle>
+
+@if (_cargando)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/proyectos/@ProyectoId/personal" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <h2 class="mb-0">@(_esNuevo ? "Agregar Personal" : "Editar Personal")</h2>
+    </div>
+
+    <div class="card shadow-sm border-0" style="max-width: 800px;">
+        <div class="card-body p-4">
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+
+                <h5 class="text-muted mb-3 border-bottom pb-2">Datos Personales</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Nombre" placeholder="Nombres" />
+                        <ValidationMessage For="() => _form.Nombre" class="text-danger small" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Apellido <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Apellido" placeholder="Apellidos" />
+                        <ValidationMessage For="() => _form.Apellido" class="text-danger small" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Documento de Identidad <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.DocumentoIdentidad" placeholder="CC, CE, Pasaporte..." />
+                        <ValidationMessage For="() => _form.DocumentoIdentidad" class="text-danger small" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Teléfono</label>
+                        <InputText class="form-control" @bind-Value="_form.Telefono" placeholder="+57 300 000 0000" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Estado</label>
+                        <InputSelect class="form-select" @bind-Value="_form.Activo">
+                            <option value="true">Activo</option>
+                            <option value="false">Inactivo</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Correo electrónico</label>
+                    <InputText class="form-control" @bind-Value="_form.Email" placeholder="nombre@empresa.com" />
+                </div>
+
+                <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Vinculación al Proyecto</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Cargo <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Cargo" placeholder="Ej: Ingeniero Residente" />
+                        <ValidationMessage For="() => _form.Cargo" class="text-danger small" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Empresa <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Empresa" placeholder="Empresa empleadora" />
+                        <ValidationMessage For="() => _form.Empresa" class="text-danger small" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+                        <InputSelect class="form-select" @bind-Value="_form.TipoPersonal">
+                            <option value="@TipoPersonal.Empleado">Empleado</option>
+                            <option value="@TipoPersonal.Contratista">Contratista</option>
+                            <option value="@TipoPersonal.Subcontratista">Subcontratista</option>
+                            <option value="@TipoPersonal.Visitante">Visitante</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Fecha de Ingreso <span class="text-danger">*</span></label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaIngreso" />
+                        <ValidationMessage For="() => _form.FechaIngreso" class="text-danger small" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Fecha de Salida</label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaSalida" />
+                        <div class="form-text">Dejar vacío si sigue activo</div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4" disabled="@_guardando">
+                        @if (_guardando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(_esNuevo ? "Agregar" : "Guardar Cambios")
+                    </button>
+
+                    @if (!_esNuevo)
+                    {
+                        <button type="button" class="btn btn-outline-danger"
+                                @onclick="() => _confirmarEliminar = true">
+                            Eliminar
+                        </button>
+                    }
+
+                    <a href="/proyectos/@ProyectoId/personal" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+
+                @if (_confirmarEliminar)
+                {
+                    <div class="alert alert-danger d-flex align-items-center gap-3 mt-3">
+                        <span>¿Eliminar a <strong>@_form.Nombre @_form.Apellido</strong>? Esta acción no se puede deshacer.</span>
+                        <div class="d-flex gap-2 ms-auto">
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="EliminarAsync">Sí, eliminar</button>
+                            <button type="button" class="btn btn-secondary btn-sm" @onclick="() => _confirmarEliminar = false">Cancelar</button>
+                        </div>
+                    </div>
+                }
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int? PersonalId { get; set; }
+
+    private FormModel _form = new();
+    private bool _esNuevo => PersonalId is null;
+    private string? _error;
+    private bool _cargando = true;
+    private bool _guardando;
+    private bool _confirmarEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_esNuevo)
+        {
+            var persona = await Db.PersonalProyecto.FindAsync(PersonalId);
+            if (persona is not null)
+            {
+                _form = new FormModel
+                {
+                    Nombre              = persona.Nombre,
+                    Apellido            = persona.Apellido,
+                    DocumentoIdentidad  = persona.DocumentoIdentidad,
+                    Cargo               = persona.Cargo,
+                    Empresa             = persona.Empresa,
+                    TipoPersonal        = persona.TipoPersonal,
+                    FechaIngreso        = persona.FechaIngreso,
+                    FechaSalida         = persona.FechaSalida,
+                    Activo              = persona.Activo,
+                    Email               = persona.Email,
+                    Telefono            = persona.Telefono
+                };
+            }
+        }
+        _cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_esNuevo)
+            {
+                var persona = new PersonalProyecto
+                {
+                    ProyectoId         = ProyectoId,
+                    Nombre             = _form.Nombre.Trim(),
+                    Apellido           = _form.Apellido.Trim(),
+                    DocumentoIdentidad = _form.DocumentoIdentidad.Trim(),
+                    Cargo              = _form.Cargo.Trim(),
+                    Empresa            = _form.Empresa.Trim(),
+                    TipoPersonal       = _form.TipoPersonal,
+                    FechaIngreso       = _form.FechaIngreso,
+                    FechaSalida        = _form.FechaSalida,
+                    Activo             = _form.Activo,
+                    Email              = _form.Email.Trim(),
+                    Telefono           = _form.Telefono.Trim(),
+                    FechaCreacion      = DateTime.UtcNow
+                };
+                Db.PersonalProyecto.Add(persona);
+            }
+            else
+            {
+                var persona = await Db.PersonalProyecto.FindAsync(PersonalId);
+                if (persona is null) { Navigation.NavigateTo($"/proyectos/{ProyectoId}/personal"); return; }
+
+                persona.Nombre             = _form.Nombre.Trim();
+                persona.Apellido           = _form.Apellido.Trim();
+                persona.DocumentoIdentidad = _form.DocumentoIdentidad.Trim();
+                persona.Cargo              = _form.Cargo.Trim();
+                persona.Empresa            = _form.Empresa.Trim();
+                persona.TipoPersonal       = _form.TipoPersonal;
+                persona.FechaIngreso       = _form.FechaIngreso;
+                persona.FechaSalida        = _form.FechaSalida;
+                persona.Activo             = _form.Activo;
+                persona.Email              = _form.Email.Trim();
+                persona.Telefono           = _form.Telefono.Trim();
+            }
+
+            await Db.SaveChangesAsync();
+            Navigation.NavigateTo($"/proyectos/{ProyectoId}/personal");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+            _guardando = false;
+        }
+    }
+
+    private async Task EliminarAsync()
+    {
+        var persona = await Db.PersonalProyecto.FindAsync(PersonalId);
+        if (persona is not null)
+        {
+            Db.PersonalProyecto.Remove(persona);
+            await Db.SaveChangesAsync();
+        }
+        Navigation.NavigateTo($"/proyectos/{ProyectoId}/personal");
+    }
+
+    private sealed class FormModel
+    {
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El apellido es obligatorio")]
+        public string Apellido { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El documento es obligatorio")]
+        public string DocumentoIdentidad { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El cargo es obligatorio")]
+        public string Cargo { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La empresa es obligatoria")]
+        public string Empresa { get; set; } = string.Empty;
+
+        public TipoPersonal TipoPersonal { get; set; } = TipoPersonal.Empleado;
+        public DateTime FechaIngreso     { get; set; } = DateTime.Today;
+        public DateTime? FechaSalida     { get; set; }
+        public bool Activo               { get; set; } = true;
+        public string Email              { get; set; } = string.Empty;
+        public string Telefono           { get; set; } = string.Empty;
+    }
+}

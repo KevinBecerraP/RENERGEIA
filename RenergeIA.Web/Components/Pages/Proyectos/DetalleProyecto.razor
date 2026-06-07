@@ -119,14 +119,24 @@ else
                         @foreach (var modulo in _modulos)
                         {
                             <div class="col-md-3 col-sm-6">
-                                <div class="card border text-center p-3 h-100 @(modulo.Disponible ? "" : "opacity-50")">
-                                    <div style="font-size: 2rem;">@modulo.Icono</div>
-                                    <div class="fw-semibold small mt-1">@modulo.Nombre</div>
-                                    @if (!modulo.Disponible)
-                                    {
+                                @if (modulo.Disponible && modulo.Url is not null)
+                                {
+                                    <a href="@modulo.Url" class="text-decoration-none">
+                                        <div class="card border text-center p-3 h-100 shadow-sm" style="cursor:pointer; transition: box-shadow .15s;">
+                                            <div style="font-size: 2rem;">@modulo.Icono</div>
+                                            <div class="fw-semibold small mt-1">@modulo.Nombre</div>
+                                            <div class="text-primary" style="font-size: 0.7rem;">Ver &rsaquo;</div>
+                                        </div>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="card border text-center p-3 h-100 opacity-50">
+                                        <div style="font-size: 2rem;">@modulo.Icono</div>
+                                        <div class="fw-semibold small mt-1">@modulo.Nombre</div>
                                         <div class="text-muted" style="font-size: 0.7rem;">Próximamente</div>
-                                    }
-                                </div>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
@@ -144,21 +154,22 @@ else
     private bool _confirmarEliminar;
     private bool _eliminando;
 
-    private readonly List<(string Nombre, string Icono, bool Disponible)> _modulos =
-    [
-        ("WBS / Actividades",   "📄", false),
-        ("Informe Diario",      "📋", false),
-        ("Personal",            "👷", false),
-        ("Equipos",             "⚙️",  false),
-        ("Documentos",          "📁", false),
-        ("Costos",              "💰", false),
-        ("No Conformidades",    "🚩", false),
-        ("Restricciones",       "🚫", false),
-    ];
+    private List<(string Nombre, string Icono, bool Disponible, string? Url)> _modulos = new();
 
     protected override async Task OnInitializedAsync()
     {
         _proyecto = await Db.Proyectos.FindAsync(Id);
+        _modulos =
+        [
+            ("Personal",           "👷", true,  $"/proyectos/{Id}/personal"),
+            ("WBS / Actividades",  "📄", false, null),
+            ("Informe Diario",     "📋", false, null),
+            ("Equipos",            "⚙️",  false, null),
+            ("Documentos",         "📁", false, null),
+            ("Costos",             "💰", false, null),
+            ("No Conformidades",   "🚩", false, null),
+            ("Restricciones",      "🚫", false, null),
+        ];
         _cargando = false;
     }
 

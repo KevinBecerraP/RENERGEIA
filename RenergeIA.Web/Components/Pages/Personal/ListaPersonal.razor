@@ -1,0 +1,163 @@
+@page "/proyectos/{ProyectoId:int}/personal"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Personal — RenergeIA</PageTitle>
+
+@if (_proyecto is null && !_cargando)
+{
+    <div class="text-center py-5">
+        <h4 class="text-muted">Proyecto no encontrado</h4>
+        <a href="/proyectos" class="btn btn-primary mt-3">Volver</a>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <a href="/proyectos/@ProyectoId" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <div class="flex-grow-1">
+            <h2 class="mb-0">Personal del Proyecto</h2>
+            @if (_proyecto is not null)
+            {
+                <span class="text-muted small">@_proyecto.Nombre</span>
+            }
+        </div>
+        <a href="/proyectos/@ProyectoId/personal/nuevo" class="btn btn-primary">+ Agregar Persona</a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm" placeholder="Buscar por nombre, cargo o empresa..."
+                   @bind="_busqueda" @bind:event="oninput" />
+        </div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="_filtroTipo">
+                <option value="">Todos los tipos</option>
+                <option value="Empleado">Empleado</option>
+                <option value="Contratista">Contratista</option>
+                <option value="Subcontratista">Subcontratista</option>
+                <option value="Visitante">Visitante</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="_filtroActivo">
+                <option value="">Activos e inactivos</option>
+                <option value="true">Solo activos</option>
+                <option value="false">Solo inactivos</option>
+            </select>
+        </div>
+    </div>
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (!PersonalFiltrado.Any())
+    {
+        <div class="text-center py-5">
+            <div style="font-size:3rem;">👷</div>
+            <h5 class="text-muted mt-3">No hay personal registrado</h5>
+            <a href="/proyectos/@ProyectoId/personal/nuevo" class="btn btn-primary mt-2">Agregar persona</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Documento</th>
+                        <th>Cargo</th>
+                        <th>Empresa</th>
+                        <th>Tipo</th>
+                        <th>Ingreso</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in PersonalFiltrado)
+                    {
+                        <tr class="@(p.Activo ? "" : "text-muted")">
+                            <td>
+                                <div class="fw-semibold">@p.Nombre @p.Apellido</div>
+                                @if (!string.IsNullOrEmpty(p.Email))
+                                {
+                                    <div class="small text-muted">@p.Email</div>
+                                }
+                            </td>
+                            <td class="small">@p.DocumentoIdentidad</td>
+                            <td>@p.Cargo</td>
+                            <td class="small">@p.Empresa</td>
+                            <td><span class="badge @BadgeTipo(p.TipoPersonal)">@p.TipoPersonal</span></td>
+                            <td class="small">@p.FechaIngreso.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (p.Activo)
+                                {
+                                    <span class="badge bg-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                }
+                            </td>
+                            <td>
+                                <a href="/proyectos/@ProyectoId/personal/@p.Id/editar"
+                                   class="btn btn-sm btn-outline-primary">Editar</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-muted small">@PersonalFiltrado.Count() registro(s) encontrado(s)</div>
+    }
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private List<PersonalProyecto> _personal = new();
+    private bool _cargando = true;
+    private string _busqueda = string.Empty;
+    private string _filtroTipo = string.Empty;
+    private string _filtroActivo = "true";
+
+    private IEnumerable<PersonalProyecto> PersonalFiltrado => _personal
+        .Where(p =>
+            (string.IsNullOrEmpty(_busqueda) ||
+             $"{p.Nombre} {p.Apellido} {p.Cargo} {p.Empresa}".Contains(_busqueda, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(_filtroTipo) || p.TipoPersonal.ToString() == _filtroTipo) &&
+            (string.IsNullOrEmpty(_filtroActivo) || p.Activo.ToString().ToLower() == _filtroActivo)
+        )
+        .OrderBy(p => p.Apellido).ThenBy(p => p.Nombre);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+        if (_proyecto is not null)
+        {
+            _personal = await Db.PersonalProyecto
+                .Where(p => p.ProyectoId == ProyectoId)
+                .OrderBy(p => p.Apellido)
+                .ToListAsync();
+        }
+        _cargando = false;
+    }
+
+    private static string BadgeTipo(TipoPersonal tipo) => tipo switch
+    {
+        TipoPersonal.Empleado       => "bg-primary",
+        TipoPersonal.Contratista    => "bg-info text-dark",
+        TipoPersonal.Subcontratista => "bg-warning text-dark",
+        TipoPersonal.Visitante      => "bg-secondary",
+        _                           => "bg-secondary"
+    };
+}
