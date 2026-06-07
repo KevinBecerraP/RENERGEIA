@@ -5,6 +5,78 @@ Actualizar este archivo cada vez que se avance en una nueva etapa o paso.
 
 ---
 
+## ¿Cómo obtener el proyecto desde GitHub?
+
+Si alguien necesita trabajar en este proyecto en un computador nuevo (o el equipo crece y entra otra persona), no es necesario empezar desde cero. Todo el código está en GitHub y se puede descargar en minutos.
+
+### Requisitos previos en el nuevo equipo
+
+Antes de clonar, instalar estas herramientas:
+
+| Herramienta | Para qué |
+|---|---|
+| **Git** — [git-scm.com](https://git-scm.com) | Descargar y versionar el código |
+| **.NET SDK 10** — [dotnet.microsoft.com](https://dotnet.microsoft.com/download) | Compilar y correr la app |
+| **SQL Server 2025 Developer** — [microsoft.com/sql-server](https://www.microsoft.com/es-co/sql-server/sql-server-downloads) | Base de datos local |
+| **VS Code** — [code.visualstudio.com](https://code.visualstudio.com) | Editor de código |
+| **Extensión C# Dev Kit** en VS Code | IntelliSense y errores en tiempo real |
+
+### Paso 1 — Clonar el repositorio
+
+Abrir una terminal (PowerShell o CMD) y ejecutar:
+
+```powershell
+git clone https://github.com/KevinBecerraP/RENERGEIA.git
+cd RENERGEIA
+```
+
+Esto descarga todo el código fuente en una carpeta llamada `RENERGEIA`.
+
+### Paso 2 — Crear la base de datos
+
+El proyecto **no incluye la base de datos** (está en `.gitignore`). Hay que crearla en el nuevo equipo:
+
+```powershell
+dotnet ef database update --project RenergeIA.Infrastructure/RenergeIA.Infrastructure.csproj --startup-project RenergeIA.Web/RenergeIA.Web.csproj
+```
+
+Este comando lee las migraciones del repositorio y crea todas las tablas automáticamente en SQL Server local.
+
+> Si SQL Server no está en `localhost` (instancia por defecto), ajustar el archivo `RenergeIA.Web/appsettings.json`:
+> ```json
+> "DefaultConnection": "Server=TU_SERVIDOR;Database=RenergeIA;Trusted_Connection=True;TrustServerCertificate=True;"
+> ```
+
+### Paso 3 — Correr la aplicación
+
+```powershell
+dotnet run --project RenergeIA.Web/RenergeIA.Web.csproj
+```
+
+Abrir en el navegador: `http://localhost:5288`
+
+### Paso 4 — Ingresar con el usuario administrador
+
+Al arrancar por primera vez, el sistema crea automáticamente el usuario admin:
+
+| Campo | Valor |
+|---|---|
+| Correo | `admin@renergeia.com` |
+| Contraseña | `Admin123!` |
+
+> Este usuario lo crea `DatabaseSeeder.cs` automáticamente si no existe. No hay que insertar nada manualmente en la base de datos.
+
+### Resumen en 4 comandos
+
+```powershell
+git clone https://github.com/KevinBecerraP/RENERGEIA.git
+cd RENERGEIA
+dotnet ef database update --project RenergeIA.Infrastructure/RenergeIA.Infrastructure.csproj --startup-project RenergeIA.Web/RenergeIA.Web.csproj
+dotnet run --project RenergeIA.Web/RenergeIA.Web.csproj
+```
+
+---
+
 ## ETAPA 0 — Decisiones previas y contexto del proyecto
 
 ### ¿Qué es RenergeIA?
