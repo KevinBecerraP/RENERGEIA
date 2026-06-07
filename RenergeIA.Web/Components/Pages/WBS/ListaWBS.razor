@@ -1,0 +1,549 @@
+@page "/proyectos/{ProyectoId:int}/wbs"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>WBS — RenergeIA</PageTitle>
+
+@if (_proyecto is null && !_cargando)
+{
+    <div class="text-center py-5">
+        <h4 class="text-muted">Proyecto no encontrado</h4>
+        <a href="/proyectos" class="btn btn-primary mt-3">Volver</a>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <a href="/proyectos/@ProyectoId" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <div class="flex-grow-1">
+            <h2 class="mb-0">WBS — Estructura de Actividades</h2>
+            @if (_proyecto is not null)
+            {
+                <span class="text-muted small">@_proyecto.Nombre</span>
+            }
+        </div>
+        @if (!_cargando && _actividades.Any())
+        {
+            <div class="form-check form-switch me-2 d-flex align-items-center gap-2 mb-0">
+                <input class="form-check-input" type="checkbox" id="mostrarInactivas"
+                       @bind="_mostrarInactivas" style="cursor:pointer;" />
+                <label class="form-check-label text-muted small" for="mostrarInactivas">
+                    Mostrar inactivas
+                </label>
+            </div>
+        }
+        @if (!_cargando && !_actividades.Any())
+        {
+            <button class="btn btn-outline-success" @onclick="() => _confirmarPlantilla = true">
+                &#128203; Cargar plantilla
+            </button>
+        }
+        <a href="/proyectos/@ProyectoId/wbs/nueva" class="btn btn-primary">+ Nueva Actividad</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="alert alert-danger alert-dismissible">
+            @_error
+            <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_confirmarPlantilla)
+    {
+        <div class="alert border shadow-sm mb-4" style="border-color:#198754!important; background:#f0fff4;">
+            <div class="d-flex align-items-start gap-3">
+                <span style="font-size:2rem;">&#128203;</span>
+                <div class="flex-grow-1">
+                    <h5 class="fw-bold mb-1">Cargar plantilla tipo EPC fotovoltaico</h5>
+                    <p class="mb-2 text-muted">
+                        Se crearán <strong>@_plantilla.Count actividades</strong> predeterminadas basadas en el
+                        cronograma tipo Renergeia (proyecto Hato Grande). Las fechas se calcularán automáticamente
+                        desde la fecha de inicio planificada del proyecto.
+                    </p>
+                    <p class="mb-3 text-muted small">
+                        Podrás <strong>desactivar</strong> las actividades que no apliquen a este proyecto y
+                        <strong>agregar nuevas</strong> manualmente cuando sea necesario.
+                    </p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-success" @onclick="CargarPlantillaAsync" disabled="@_cargandoPlantilla">
+                            @if (_cargandoPlantilla)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Cargando...</span>
+                            }
+                            else
+                            {
+                                <span>&#10003; Sí, cargar plantilla</span>
+                            }
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="() => _confirmarPlantilla = false"
+                                disabled="@_cargandoPlantilla">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (!_actividades.Any() && !_confirmarPlantilla)
+    {
+        <div class="text-center py-5">
+            <div style="font-size:3.5rem;">&#128203;</div>
+            <h5 class="text-muted mt-3">No hay actividades registradas</h5>
+            <p class="text-muted">Puedes cargar la plantilla predeterminada del cronograma tipo EPC fotovoltaico,<br/>o crear actividades manualmente una a una.</p>
+            <div class="d-flex gap-3 justify-content-center mt-3 flex-wrap">
+                <button class="btn btn-success btn-lg" @onclick="() => _confirmarPlantilla = true">
+                    &#128203; Cargar plantilla
+                </button>
+                <a href="/proyectos/@ProyectoId/wbs/nueva" class="btn btn-outline-primary btn-lg">
+                    + Nueva actividad manual
+                </a>
+            </div>
+        </div>
+    }
+    else if (_actividades.Any())
+    {
+        <!-- Tarjetas resumen -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center py-3">
+                    <div class="fw-bold fs-4">@_actividades.Count(a => a.Activo)</div>
+                    <div class="text-muted small">Actividades activas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center py-3">
+                    <div class="fw-bold fs-4 text-success">@_actividades.Count(a => a.Estado == EstadoActividad.Completada && a.Activo)</div>
+                    <div class="text-muted small">Completadas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center py-3">
+                    <div class="fw-bold fs-4 text-warning">@_actividades.Count(a => a.Estado == EstadoActividad.EnProgreso && a.Activo)</div>
+                    <div class="text-muted small">En progreso</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center py-3">
+                    <div class="fw-bold fs-4 text-danger">@_actividades.Count(a => (a.Estado == EstadoActividad.Retrasada || a.Estado == EstadoActividad.Bloqueada) && a.Activo)</div>
+                    <div class="text-muted small">Con problemas</div>
+                </div>
+            </div>
+        </div>
+
+        @if (!_actividades.Any(a => a.Activo) && !_mostrarInactivas)
+        {
+            <div class="alert alert-warning text-center">
+                Todas las actividades están inactivas. Activa "Mostrar inactivas" para verlas.
+            </div>
+        }
+
+        <!-- Árbol de actividades -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="min-width:300px;">Actividad</th>
+                        <th>Estado</th>
+                        <th>Avance real</th>
+                        <th>Inicio plan.</th>
+                        <th>Fin plan.</th>
+                        <th>Responsable</th>
+                        <th class="text-center">Activa</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var act in _raicesVisibles)
+                    {
+                        @RenderActividad(act, 0)
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private List<ActividadWBS> _actividades = new();
+    private bool _cargando = true;
+    private bool _mostrarInactivas;
+    private bool _confirmarPlantilla;
+    private bool _cargandoPlantilla;
+    private string? _error;
+
+    private IEnumerable<ActividadWBS> _raicesVisibles => _actividades
+        .Where(a => a.ActividadPadreId is null && (_mostrarInactivas || a.Activo));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+        if (_proyecto is not null)
+            await CargarActividadesAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarActividadesAsync()
+    {
+        var lista = await Db.ActividadesWBS
+            .Where(a => a.ProyectoId == ProyectoId)
+            .ToListAsync();
+
+        _actividades = lista
+            .OrderBy(a => WbsSortKey(a.CodigoWBS))
+            .ToList();
+    }
+
+    // Convierte "1.10" → "0001.0010" para ordenar numéricamente
+    private static string WbsSortKey(string codigo) =>
+        string.Join(".", codigo.Split('.').Select(p => p.PadLeft(4, '0')));
+
+    private async Task ToggleActivoAsync(int id, bool nuevoValor)
+    {
+        var act = await Db.ActividadesWBS.FindAsync(id);
+        if (act is null) return;
+        act.Activo = nuevoValor;
+        await Db.SaveChangesAsync();
+        // Reflect change in local list to avoid full reload
+        var local = _actividades.FirstOrDefault(a => a.Id == id);
+        if (local is not null) local.Activo = nuevoValor;
+    }
+
+    private async Task CargarPlantillaAsync()
+    {
+        if (_proyecto is null) return;
+        _cargandoPlantilla = true;
+        _error = null;
+
+        try
+        {
+            var fechaInicio = _proyecto.FechaInicioPlanificada;
+            var idMap = new Dictionary<string, int>();
+
+            // Insert level by level so parent IDs are available for children
+            for (int nivel = 1; nivel <= 4; nivel++)
+            {
+                var batch = _plantilla.Where(p => p.Nivel == nivel).ToList();
+                if (!batch.Any()) continue;
+
+                var entities = new List<(string Codigo, ActividadWBS Entity)>();
+                foreach (var item in batch)
+                {
+                    int? padreId = item.CodigoPadre is not null && idMap.TryGetValue(item.CodigoPadre, out var pid)
+                        ? pid : null;
+
+                    var act = new ActividadWBS
+                    {
+                        ProyectoId             = ProyectoId,
+                        CodigoWBS              = item.Codigo,
+                        Nombre                 = item.Nombre,
+                        NivelWBS               = item.Nivel,
+                        Descripcion            = string.Empty,
+                        Responsable            = string.Empty,
+                        Activo                 = true,
+                        ActividadPadreId       = padreId,
+                        FechaInicioPlanificada = fechaInicio.AddDays(item.DiasDesdeInicio),
+                        FechaFinPlanificada    = fechaInicio.AddDays(item.DiasDesdeInicio + (item.DuracionDias > 0 ? item.DuracionDias : 1)),
+                        AvancePlanificado      = 0,
+                        AvanceReal             = 0,
+                        Estado                 = EstadoActividad.Pendiente,
+                        FechaCreacion          = DateTime.UtcNow
+                    };
+                    Db.ActividadesWBS.Add(act);
+                    entities.Add((item.Codigo, act));
+                }
+
+                await Db.SaveChangesAsync();
+
+                // After SaveChanges, EF Core has populated the Ids
+                foreach (var (codigo, entity) in entities)
+                    idMap[codigo] = entity.Id;
+            }
+
+            await CargarActividadesAsync();
+            _confirmarPlantilla = false;
+            _mostrarInactivas = false;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar la plantilla: {ex.Message}";
+        }
+        finally
+        {
+            _cargandoPlantilla = false;
+        }
+    }
+
+    private RenderFragment RenderActividad(ActividadWBS act, int nivel) => __builder =>
+    {
+        var hijosVisibles = _actividades
+            .Where(a => a.ActividadPadreId == act.Id && (_mostrarInactivas || a.Activo))
+            .ToList();
+        var indentPx = nivel * 22;
+        var opacityStyle = act.Activo ? "" : "opacity:.45;";
+
+        <tr style="@opacityStyle">
+            <td>
+                <div style="padding-left:@(indentPx)px;" class="d-flex align-items-center gap-2">
+                    @if (_actividades.Any(a => a.ActividadPadreId == act.Id))
+                    {
+                        <span class="text-muted" style="font-size:.8rem;">&#9660;</span>
+                    }
+                    else
+                    {
+                        <span style="display:inline-block;width:14px;"></span>
+                    }
+                    <div>
+                        <span class="badge bg-secondary me-1" style="font-size:.7rem;">@act.CodigoWBS</span>
+                        <span class="@(nivel == 0 ? "fw-bold" : "")">@act.Nombre</span>
+                    </div>
+                </div>
+            </td>
+            <td>
+                @if (act.Activo)
+                {
+                    <span class="badge @BadgeEstado(act.Estado)">@NombreEstado(act.Estado)</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Inactiva</span>
+                }
+            </td>
+            <td>
+                @if (act.Activo)
+                {
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:6px; min-width:60px;">
+                            <div class="progress-bar @ColorProgreso(act.AvanceReal)"
+                                 style="width:@(act.AvanceReal)%;"></div>
+                        </div>
+                        <span class="small text-muted">@act.AvanceReal%</span>
+                    </div>
+                }
+                else
+                {
+                    <span class="text-muted small">—</span>
+                }
+            </td>
+            <td class="small text-muted">@act.FechaInicioPlanificada.ToString("dd/MM/yy")</td>
+            <td class="small text-muted">@act.FechaFinPlanificada.ToString("dd/MM/yy")</td>
+            <td class="small">@(string.IsNullOrEmpty(act.Responsable) ? "—" : act.Responsable)</td>
+            <td class="text-center">
+                <button class="btn btn-sm @(act.Activo ? "btn-success" : "btn-outline-secondary")"
+                        style="min-width:70px; font-size:.75rem; padding:2px 8px;"
+                        @onclick="() => ToggleActivoAsync(act.Id, !act.Activo)"
+                        title="@(act.Activo ? "Desactivar" : "Activar")">
+                    @(act.Activo ? "✓ Activa" : "Inactiva")
+                </button>
+            </td>
+            <td>
+                @if (act.Activo)
+                {
+                    <div class="d-flex gap-1">
+                        <a href="/proyectos/@ProyectoId/wbs/@act.Id/editar"
+                           class="btn btn-sm btn-outline-primary">Editar</a>
+                        <a href="/proyectos/@ProyectoId/wbs/nueva?padreId=@act.Id"
+                           class="btn btn-sm btn-outline-secondary" title="Agregar subactividad">+Sub</a>
+                    </div>
+                }
+            </td>
+        </tr>
+
+        @foreach (var hijo in hijosVisibles)
+        {
+            @RenderActividad(hijo, nivel + 1)
+        }
+    };
+
+    private static string BadgeEstado(EstadoActividad e) => e switch
+    {
+        EstadoActividad.Pendiente  => "bg-secondary",
+        EstadoActividad.EnProgreso => "bg-primary",
+        EstadoActividad.Completada => "bg-success",
+        EstadoActividad.Retrasada  => "bg-danger",
+        EstadoActividad.Bloqueada  => "bg-warning text-dark",
+        _                          => "bg-secondary"
+    };
+
+    private static string NombreEstado(EstadoActividad e) => e switch
+    {
+        EstadoActividad.Pendiente  => "Pendiente",
+        EstadoActividad.EnProgreso => "En progreso",
+        EstadoActividad.Completada => "Completada",
+        EstadoActividad.Retrasada  => "Retrasada",
+        EstadoActividad.Bloqueada  => "Bloqueada",
+        _                          => e.ToString()
+    };
+
+    private static string ColorProgreso(decimal avance) => avance switch
+    {
+        >= 100 => "bg-success",
+        >= 60  => "bg-primary",
+        >= 30  => "bg-warning",
+        _      => "bg-danger"
+    };
+
+    // ─── Datos de la plantilla tipo EPC fotovoltaico (base: proyecto Hato Grande) ───
+
+    private sealed record PlantillaItem(
+        string Codigo,
+        string Nombre,
+        int Nivel,
+        string? CodigoPadre,
+        int DiasDesdeInicio,
+        int DuracionDias);
+
+    private static readonly List<PlantillaItem> _plantilla = new()
+    {
+        // ── Nivel 1: Secciones principales ──────────────────────────────────────
+        new("1.1",  "Hitos Principales del Contrato",              1, null,   0,   37),
+        new("1.2",  "Hitos Generales del Contrato",                1, null,  39,    0),
+        new("1.3",  "Permisos de construcción",                    1, null,  47,    1),
+        new("1.4",  "Estudios de Ingeniería",                      1, null,  13,   20),
+        new("1.5",  "Pull Out Test",                               1, null,  19,   14),
+        new("1.6",  "Ingeniería de detalle",                       1, null,  35,   90),
+        new("1.7",  "Suministros",                                 1, null,  42,  159),
+        new("1.8",  "Construcción Planta",                         1, null,  35,  238),
+        new("1.9",  "Culminación Sustancial del Proyecto",         1, null, 259,   25),
+        new("1.10", "Cierre",                                      1, null, 309,    6),
+        new("1.11", "Aceptación Provisional",                      1, null, 287,   25),
+
+        // ── Nivel 2: Hitos Principales ──────────────────────────────────────────
+        new("1.1.1", "Entrega Oferta a Green Yellow",              2, "1.1",   0,  1),
+        new("1.1.2", "Revisión del acuerdo EPC",                   2, "1.1",   1, 15),
+        new("1.1.3", "Ejecución del acuerdo EPC",                  2, "1.1",  19, 15),
+        new("1.1.4", "Firma de Contrato",                          2, "1.1",  35,  0),
+        new("1.1.5", "Pago Anticipo",                              2, "1.1",  41,  1),
+
+        // ── Nivel 2: Suministros ─────────────────────────────────────────────────
+        new("1.7.1", "Suministro Módulos (Cliente)",               2, "1.7", 162, 28),
+        new("1.7.2", "Suministro Inversores (Cliente)",            2, "1.7",  42, 126),
+        new("1.7.3", "Suministro por Renergeia",                   2, "1.7",  48, 154),
+
+        // ── Nivel 3: Suministro Renergeia ────────────────────────────────────────
+        new("1.7.3.1",  "Centros de Transformación",               3, "1.7.3",  48, 133),
+        new("1.7.3.2",  "Centros de Seccionamiento",               3, "1.7.3",  48, 154),
+        new("1.7.3.3",  "Tracker (Estructuras)",                   3, "1.7.3",  52,  97),
+        new("1.7.3.4",  "Hincas",                                  3, "1.7.3",  52,  97),
+        new("1.7.3.5",  "Tablero de SSAA",                         3, "1.7.3", 167,  26),
+        new("1.7.3.6",  "Cargador y banco de baterías",            3, "1.7.3", 117,  30),
+        new("1.7.3.7",  "Cuarto de control",                       3, "1.7.3",  83,  33),
+        new("1.7.3.8",  "Cable cobre desnudo (Malla Tierra)",      3, "1.7.3",  81,  26),
+        new("1.7.3.9",  "Cable MT",                                3, "1.7.3",  77,  81),
+        new("1.7.3.10", "Cable BT",                                3, "1.7.3",  85,  78),
+        new("1.7.3.11", "Cable Solar",                             3, "1.7.3",  88,  82),
+        new("1.7.3.12", "Estación Meteorológica",                  3, "1.7.3",  52, 130),
+        new("1.7.3.13", "Sistema SCADA y Rack de Comunicaciones",  3, "1.7.3",  52, 130),
+        new("1.7.3.14", "CCTV y Control de Acceso",                3, "1.7.3",  56, 120),
+        new("1.7.3.15", "Fibra Óptica",                            3, "1.7.3", 167,  36),
+        new("1.7.3.16", "Sistema contraincendios",                 3, "1.7.3", 175,  24),
+        new("1.7.3.17", "Cerramiento Perimetral",                  3, "1.7.3",  67,  40),
+
+        // ── Nivel 2: Construcción ────────────────────────────────────────────────
+        new("1.8.1",  "Implantación de Obra",                      2, "1.8",  35,  10),
+        new("1.8.2",  "Obras Civiles",                             2, "1.8",  46, 159),
+        new("1.8.3",  "Obras Mecánicas",                           2, "1.8", 146,  87),
+        new("1.8.4",  "Equipos Principales",                       2, "1.8", 176,  61),
+        new("1.8.5",  "Obras Eléctricas",                          2, "1.8", 130,  93),
+        new("1.8.6",  "Conexionado de Cables",                     2, "1.8", 176,  63),
+        new("1.8.7",  "Pruebas Preoperacionales",                  2, "1.8", 203,  50),
+        new("1.8.8",  "Fin de construcción",                       2, "1.8", 256,   0),
+        new("1.8.9",  "Finalización de obra civil",                2, "1.8", 237,   0),
+        new("1.8.10", "Finalización de montaje y módulos",         2, "1.8", 248,   0),
+        new("1.8.11", "Finalización de obra eléctrica",            2, "1.8", 248,   0),
+        new("1.8.12", "Culminación Mecánica",                      2, "1.8", 258,   0),
+        new("1.8.13", "Energización de la Planta",                 2, "1.8", 258,   1),
+        new("1.8.14", "Pruebas Operacionales y puesta en marcha",  2, "1.8", 259,  25),
+        new("1.8.15", "DOSSIER",                                   2, "1.8", 283,  30),
+
+        // ── Nivel 3: Implantación ────────────────────────────────────────────────
+        new("1.8.1.1", "Instalación Oficinas provisionales",       3, "1.8.1", 35, 5),
+        new("1.8.1.2", "Instalación Servicios provisionales",      3, "1.8.1", 41, 5),
+
+        // ── Nivel 3: Obras Civiles ───────────────────────────────────────────────
+        new("1.8.2.1",  "Análisis previo",                         3, "1.8.2",  46,   1),
+        new("1.8.2.2",  "Movilización",                            3, "1.8.2",  47,   5),
+        new("1.8.2.3",  "Aprovechamiento Forestal",                3, "1.8.2",  53,  25),
+        new("1.8.2.4",  "Rocería Permanente",                      3, "1.8.2",  82, 110),
+        new("1.8.2.5",  "Movimiento de tierras",                   3, "1.8.2",  94,  30),
+        new("1.8.2.6",  "Acondicionamiento del terreno",           3, "1.8.2", 102,  30),
+        new("1.8.2.7",  "Construcción de Vías de Acceso",          3, "1.8.2", 119,  17),
+        new("1.8.2.8",  "Construcción Cerramiento Perimetral",     3, "1.8.2", 140,  50),
+        new("1.8.2.9",  "Construcción canalizaciones de cables",   3, "1.8.2", 130,  48),
+        new("1.8.2.10", "Construcción Cajas eléctricas",           3, "1.8.2", 130,  48),
+        new("1.8.2.11", "Cimentación cuarto de control y centros", 3, "1.8.2", 144,  55),
+        new("1.8.2.12", "Cierre de canaletas y canalizaciones",    3, "1.8.2", 124,  60),
+        new("1.8.2.13", "Excavaciones y uniones malla tierra",     3, "1.8.2", 126,  50),
+        new("1.8.2.14", "Construcción de Vías Finales",            3, "1.8.2", 220,  14),
+        new("1.8.2.15", "Drenajes",                                3, "1.8.2", 144,  60),
+
+        // ── Nivel 3: Obras Mecánicas ─────────────────────────────────────────────
+        new("1.8.3.1", "Replanteo de Hincas",                      3, "1.8.3", 146, 25),
+        new("1.8.3.2", "Distribución Hincas",                      3, "1.8.3", 159, 10),
+        new("1.8.3.3", "Hincado Directo",                          3, "1.8.3", 166, 30),
+        new("1.8.3.4", "Distribución de Estructuras",              3, "1.8.3", 173, 27),
+        new("1.8.3.5", "Instalación de Estructuras",               3, "1.8.3", 185, 30),
+        new("1.8.3.6", "Distribución de Módulos",                  3, "1.8.3", 202, 15),
+        new("1.8.3.7", "Instalación de Módulos",                   3, "1.8.3", 214, 30),
+
+        // ── Nivel 3: Equipos Principales ────────────────────────────────────────
+        new("1.8.4.1", "Instalación Centro de Transformación",     3, "1.8.4", 209,  3),
+        new("1.8.4.2", "Instalación Inversores",                   3, "1.8.4", 176, 15),
+        new("1.8.4.3", "Instalación Estación Meteorológica",       3, "1.8.4", 209, 20),
+        new("1.8.4.4", "Montaje Cuarto de control",                3, "1.8.4", 209,  7),
+        new("1.8.4.5", "SCADA",                                    3, "1.8.4", 217, 25),
+        new("1.8.4.6", "CCTV",                                     3, "1.8.4", 183, 20),
+        new("1.8.4.7", "Instalación Tablero SSAA",                 3, "1.8.4", 209,  7),
+        new("1.8.4.8", "Montaje Cargador y Banco de baterías",     3, "1.8.4", 217,  5),
+        new("1.8.4.9", "Montaje Centro Seccionamiento",            3, "1.8.4", 210,  4),
+
+        // ── Nivel 3: Obras Eléctricas ────────────────────────────────────────────
+        new("1.8.5.1", "Cable Malla Tierra",                       3, "1.8.5", 130, 55),
+        new("1.8.5.2", "Cable MT",                                 3, "1.8.5", 165, 15),
+        new("1.8.5.3", "Cable BT",                                 3, "1.8.5", 182, 25),
+        new("1.8.5.4", "Cable Solar",                              3, "1.8.5", 206, 25),
+        new("1.8.5.5", "Cable SSA",                                3, "1.8.5", 185, 10),
+        new("1.8.5.6", "Cable CCTV",                               3, "1.8.5", 199,  7),
+        new("1.8.5.7", "Fibra Óptica",                             3, "1.8.5", 206,  8),
+        new("1.8.5.8", "Instalación sistema contraincendio",       3, "1.8.5", 228, 10),
+
+        // ── Nivel 3: Conexionado ─────────────────────────────────────────────────
+        new("1.8.6.1", "Conexionado MT",                           3, "1.8.6", 176, 15),
+        new("1.8.6.2", "Conexionado BT",                           3, "1.8.6", 206, 15),
+        new("1.8.6.3", "Conexionado Solar",                        3, "1.8.6", 223, 22),
+        new("1.8.6.4", "Conexionado SSAA",                         3, "1.8.6", 217, 10),
+        new("1.8.6.5", "Conexionado CCTV",                         3, "1.8.6", 199,  7),
+        new("1.8.6.6", "Conexionado Fibra Óptica",                 3, "1.8.6", 209,  7),
+
+        // ── Nivel 3: Pruebas Preoperacionales ────────────────────────────────────
+        new("1.8.7.1", "Test y pruebas Cables MT",                 3, "1.8.7", 215,  5),
+        new("1.8.7.2", "Test y pruebas Cables BT",                 3, "1.8.7", 222,  5),
+        new("1.8.7.3", "Test y pruebas Cables Solar",              3, "1.8.7", 248,  7),
+        new("1.8.7.4", "Test y pruebas Fibra Óptica",              3, "1.8.7", 217,  7),
+        new("1.8.7.5", "Integración con SCADA",                    3, "1.8.7", 245,  7),
+        new("1.8.7.6", "Pruebas CCTV",                             3, "1.8.7", 203,  5),
+        new("1.8.7.7", "Liberación Tracker y Módulos",             3, "1.8.7", 244, 10),
+        new("1.8.7.8", "Liberación Obras Civiles",                 3, "1.8.7", 235,  2),
+        new("1.8.7.9", "Certificación Retie",                      3, "1.8.7", 242, 15),
+
+        // ── Nivel 3: Pruebas Operacionales ──────────────────────────────────────
+        new("1.8.14.1", "Pruebas Operacionales",                   3, "1.8.14", 259, 18),
+        new("1.8.14.2", "Pruebas de Desempeño Iniciales (PR)",     3, "1.8.14", 279,  7),
+
+        // ── Nivel 2: Cierre ──────────────────────────────────────────────────────
+        new("1.10.1", "Trámite garantía bancaria",                 2, "1.10", 309, 6),
+    };
+}

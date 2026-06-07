@@ -1,0 +1,337 @@
+@page "/proyectos/{ProyectoId:int}/wbs/nueva"
+@page "/proyectos/{ProyectoId:int}/wbs/{ActividadId:int}/editar"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>@(_esNuevo ? "Nueva Actividad" : "Editar Actividad") — RenergeIA</PageTitle>
+
+@if (_cargando)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/proyectos/@ProyectoId/wbs" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <h2 class="mb-0">@(_esNuevo ? "Nueva Actividad WBS" : "Editar Actividad WBS")</h2>
+    </div>
+
+    <div class="card shadow-sm border-0" style="max-width: 800px;">
+        <div class="card-body p-4">
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+
+                <h5 class="text-muted mb-3 border-bottom pb-2">Identificación</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Código WBS <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.CodigoWBS" placeholder="Ej: 1.2.3" />
+                        <div class="form-text">Estructura jerárquica: 1, 1.1, 1.1.2...</div>
+                        <ValidationMessage For="() => _form.CodigoWBS" class="text-danger small" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Nombre de la Actividad <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Nombre" placeholder="Ej: Movimiento de tierras" />
+                        <ValidationMessage For="() => _form.Nombre" class="text-danger small" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Actividad Padre</label>
+                        <select class="form-select" @bind="_form.ActividadPadreId">
+                            <option value="">— Ninguna (actividad raíz) —</option>
+                            @foreach (var padre in _posiblesPadres)
+                            {
+                                <option value="@padre.Id">@padre.CodigoWBS — @padre.Nombre</option>
+                            }
+                        </select>
+                        <div class="form-text">Dejar vacío si es una actividad de primer nivel</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Nivel WBS</label>
+                        <InputNumber class="form-control" @bind-Value="_form.NivelWBS" />
+                        <div class="form-text">1 = raíz, 2 = sub, etc.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Estado</label>
+                        <InputSelect class="form-select" @bind-Value="_form.Estado">
+                            <option value="@EstadoActividad.Pendiente">Pendiente</option>
+                            <option value="@EstadoActividad.EnProgreso">En Progreso</option>
+                            <option value="@EstadoActividad.Completada">Completada</option>
+                            <option value="@EstadoActividad.Retrasada">Retrasada</option>
+                            <option value="@EstadoActividad.Bloqueada">Bloqueada</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Descripción</label>
+                    <InputTextArea class="form-control" @bind-Value="_form.Descripcion" rows="2"
+                                  placeholder="Descripción detallada de la actividad..." />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Responsable</label>
+                    <InputText class="form-control" @bind-Value="_form.Responsable"
+                               placeholder="Nombre del responsable o cargo" />
+                </div>
+
+                <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Cronograma</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Inicio planificado <span class="text-danger">*</span></label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaInicioPlanificada" />
+                        <ValidationMessage For="() => _form.FechaInicioPlanificada" class="text-danger small" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fin planificado <span class="text-danger">*</span></label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaFinPlanificada" />
+                        <ValidationMessage For="() => _form.FechaFinPlanificada" class="text-danger small" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Inicio real</label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaInicioReal" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fin real</label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaFinReal" />
+                    </div>
+                </div>
+
+                <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Avance</h5>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Avance planificado: <strong>@_form.AvancePlanificado%</strong>
+                        </label>
+                        <input type="range" class="form-range" min="0" max="100" step="1"
+                               @bind="_form.AvancePlanificado" @bind:event="oninput" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Avance real: <strong class="@(ColorTextoAvance(_form.AvanceReal))">@_form.AvanceReal%</strong>
+                        </label>
+                        <input type="range" class="form-range" min="0" max="100" step="1"
+                               @bind="_form.AvanceReal" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="activoCheck"
+                               @bind="_form.Activo" />
+                        <label class="form-check-label fw-semibold" for="activoCheck">
+                            Actividad activa
+                        </label>
+                        <div class="form-text">Desactiva para excluir esta actividad del proyecto sin eliminarla</div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4" disabled="@_guardando">
+                        @if (_guardando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(_esNuevo ? "Crear Actividad" : "Guardar Cambios")
+                    </button>
+
+                    @if (!_esNuevo)
+                    {
+                        <button type="button" class="btn btn-outline-danger"
+                                @onclick="() => _confirmarEliminar = true">
+                            Eliminar
+                        </button>
+                    }
+
+                    <a href="/proyectos/@ProyectoId/wbs" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+
+                @if (_confirmarEliminar)
+                {
+                    <div class="alert alert-danger d-flex align-items-center gap-3 mt-3">
+                        <span>¿Eliminar la actividad <strong>@_form.Nombre</strong>? Se eliminarán también sus subactividades.</span>
+                        <div class="d-flex gap-2 ms-auto">
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="EliminarAsync">Sí, eliminar</button>
+                            <button type="button" class="btn btn-secondary btn-sm" @onclick="() => _confirmarEliminar = false">Cancelar</button>
+                        </div>
+                    </div>
+                }
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProyectoId   { get; set; }
+    [Parameter] public int? ActividadId { get; set; }
+
+    [SupplyParameterFromQuery] public int? PadreId { get; set; }
+
+    private FormModel _form = new();
+    private List<ActividadWBS> _posiblesPadres = new();
+    private bool _esNuevo => ActividadId is null;
+    private string? _error;
+    private bool _cargando = true;
+    private bool _guardando;
+    private bool _confirmarEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _posiblesPadres = await Db.ActividadesWBS
+            .Where(a => a.ProyectoId == ProyectoId && a.Id != ActividadId)
+            .OrderBy(a => a.CodigoWBS)
+            .ToListAsync();
+
+        if (!_esNuevo)
+        {
+            var act = await Db.ActividadesWBS.FindAsync(ActividadId);
+            if (act is not null)
+            {
+                _form = new FormModel
+                {
+                    CodigoWBS              = act.CodigoWBS,
+                    Nombre                 = act.Nombre,
+                    Descripcion            = act.Descripcion,
+                    NivelWBS               = act.NivelWBS,
+                    Responsable            = act.Responsable,
+                    ActividadPadreId       = act.ActividadPadreId,
+                    FechaInicioPlanificada = act.FechaInicioPlanificada,
+                    FechaFinPlanificada    = act.FechaFinPlanificada,
+                    FechaInicioReal        = act.FechaInicioReal,
+                    FechaFinReal           = act.FechaFinReal,
+                    AvancePlanificado      = act.AvancePlanificado,
+                    AvanceReal             = act.AvanceReal,
+                    Estado                 = act.Estado,
+                    Activo                 = act.Activo
+                };
+            }
+        }
+        else if (PadreId.HasValue)
+        {
+            _form.ActividadPadreId = PadreId;
+            var padre = _posiblesPadres.FirstOrDefault(p => p.Id == PadreId);
+            if (padre is not null)
+                _form.NivelWBS = padre.NivelWBS + 1;
+        }
+
+        _cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_esNuevo)
+            {
+                var act = new ActividadWBS
+                {
+                    ProyectoId             = ProyectoId,
+                    CodigoWBS              = _form.CodigoWBS.Trim(),
+                    Nombre                 = _form.Nombre.Trim(),
+                    Descripcion            = _form.Descripcion.Trim(),
+                    NivelWBS               = _form.NivelWBS,
+                    Responsable            = _form.Responsable.Trim(),
+                    ActividadPadreId       = _form.ActividadPadreId == 0 ? null : _form.ActividadPadreId,
+                    FechaInicioPlanificada = _form.FechaInicioPlanificada,
+                    FechaFinPlanificada    = _form.FechaFinPlanificada,
+                    FechaInicioReal        = _form.FechaInicioReal,
+                    FechaFinReal           = _form.FechaFinReal,
+                    AvancePlanificado      = _form.AvancePlanificado,
+                    AvanceReal             = _form.AvanceReal,
+                    Estado                 = _form.Estado,
+                    Activo                 = _form.Activo,
+                    FechaCreacion          = DateTime.UtcNow
+                };
+                Db.ActividadesWBS.Add(act);
+            }
+            else
+            {
+                var act = await Db.ActividadesWBS.FindAsync(ActividadId);
+                if (act is null) { Navigation.NavigateTo($"/proyectos/{ProyectoId}/wbs"); return; }
+
+                act.CodigoWBS              = _form.CodigoWBS.Trim();
+                act.Nombre                 = _form.Nombre.Trim();
+                act.Descripcion            = _form.Descripcion.Trim();
+                act.NivelWBS               = _form.NivelWBS;
+                act.Responsable            = _form.Responsable.Trim();
+                act.ActividadPadreId       = _form.ActividadPadreId == 0 ? null : _form.ActividadPadreId;
+                act.FechaInicioPlanificada = _form.FechaInicioPlanificada;
+                act.FechaFinPlanificada    = _form.FechaFinPlanificada;
+                act.FechaInicioReal        = _form.FechaInicioReal;
+                act.FechaFinReal           = _form.FechaFinReal;
+                act.AvancePlanificado      = _form.AvancePlanificado;
+                act.AvanceReal             = _form.AvanceReal;
+                act.Estado                 = _form.Estado;
+                act.Activo                 = _form.Activo;
+            }
+
+            await Db.SaveChangesAsync();
+            Navigation.NavigateTo($"/proyectos/{ProyectoId}/wbs");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+            _guardando = false;
+        }
+    }
+
+    private async Task EliminarAsync()
+    {
+        var act = await Db.ActividadesWBS.FindAsync(ActividadId);
+        if (act is not null)
+        {
+            Db.ActividadesWBS.Remove(act);
+            await Db.SaveChangesAsync();
+        }
+        Navigation.NavigateTo($"/proyectos/{ProyectoId}/wbs");
+    }
+
+    private static string ColorTextoAvance(decimal avance) => avance switch
+    {
+        >= 100 => "text-success",
+        >= 60  => "text-primary",
+        >= 30  => "text-warning",
+        _      => "text-danger"
+    };
+
+    private sealed class FormModel
+    {
+        [Required(ErrorMessage = "El código WBS es obligatorio")]
+        [MaxLength(20)]
+        public string CodigoWBS { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        public string Descripcion            { get; set; } = string.Empty;
+        public int NivelWBS                  { get; set; } = 1;
+        public string Responsable            { get; set; } = string.Empty;
+        public int? ActividadPadreId         { get; set; }
+        public DateTime FechaInicioPlanificada { get; set; } = DateTime.Today;
+        public DateTime FechaFinPlanificada  { get; set; } = DateTime.Today.AddDays(30);
+        public DateTime? FechaInicioReal     { get; set; }
+        public DateTime? FechaFinReal        { get; set; }
+        public decimal AvancePlanificado     { get; set; }
+        public decimal AvanceReal            { get; set; }
+        public EstadoActividad Estado        { get; set; } = EstadoActividad.Pendiente;
+        public bool Activo                   { get; set; } = true;
+    }
+}

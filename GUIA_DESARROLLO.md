@@ -20,6 +20,7 @@ Actualizar este archivo cada vez que se avance en una nueva etapa o paso.
 | [Etapa 5 — Módulo Proyectos](#etapa-5--módulo-de-proyectos-crud-completo) | CRUD completo de proyectos |
 | [Etapa 6 — Módulo Personal](#etapa-6--módulo-de-personal-del-proyecto-crud-completo) | CRUD de personal vinculado a proyectos |
 | [Etapa 7 — Módulo Equipos](#etapa-7--módulo-de-equipos-crud-completo) | Maquinaria, horómetros, mantenimientos |
+| [Etapa 8 — Módulo WBS](#etapa-8--módulo-wbs--estructura-de-actividades) | Árbol de tareas, plantilla tipo EPC fotovoltaico |
 | [Cómo correr el proyecto](#cómo-correr-el-proyecto-en-cualquier-momento) | Comando para arrancar la app |
 
 ---
@@ -40,7 +41,7 @@ Estado de cada etapa de desarrollo. Se actualiza al completar cada una.
 | 5 | Proyectos | CRUD completo (listar, crear, ver, editar, eliminar) | ✅ Completo |
 | 6 | Personal | CRUD de personas por proyecto, filtros, activo/inactivo | ✅ Completo |
 | 7 | Equipos | CRUD de maquinaria por proyecto | ✅ Completo |
-| 8 | WBS / Actividades | Estructura de desglose de trabajo, jerarquía de tareas | 🔄 En progreso |
+| 8 | WBS / Actividades | Árbol de tareas, plantilla tipo EPC, activar/desactivar | ✅ Completo |
 | 9 | Informe Diario | Registro diario de avance por actividad | ⏳ Pendiente |
 | 10 | Documentos | Gestión documental con versiones | ⏳ Pendiente |
 | 11 | Costos | Partidas presupuestales y costos reales | ⏳ Pendiente |
@@ -1159,6 +1160,138 @@ _modulos =
 - [x] Eliminación con confirmación inline
 - [x] Módulo Equipos clicable desde el detalle del proyecto
 - [x] Creación, edición y cambio de estado probados con datos reales
+
+---
+
+## ETAPA 8 — Módulo WBS / Estructura de Actividades
+
+**Objetivo:** Registrar la estructura de desglose de trabajo (WBS) de cada proyecto en forma de árbol jerárquico, con soporte para cargar una plantilla predeterminada basada en el cronograma tipo EPC fotovoltaico de Renergeia.
+
+### 8.1 Archivos creados o modificados
+
+| Archivo | Ruta | Cambio |
+|---|---|---|
+| `ListaWBS.razor` | `Pages/WBS/` | Vista árbol + plantilla + toggle activo/inactivo |
+| `FormWBS.razor` | `Pages/WBS/` | Formulario crear/editar, incluye campo Activo |
+| `ActividadWBS.cs` | `RenergeIA.Core/Entities/` | Se agregó propiedad `bool Activo` |
+
+### 8.2 Rutas del módulo
+
+```
+/proyectos/{id}/wbs                          → Árbol de actividades del proyecto
+/proyectos/{id}/wbs/nueva                    → Formulario de nueva actividad
+/proyectos/{id}/wbs/nueva?padreId=X          → Nueva subactividad bajo la actividad X
+/proyectos/{id}/wbs/{actividadId}/editar     → Editar actividad existente
+```
+
+### 8.3 Migración requerida
+
+Al integrar este módulo en un equipo nuevo, la base de datos necesita una migración adicional para la columna `Activo` en la tabla `ActividadesWBS`. Ejecutar **después** de `dotnet ef database update` inicial:
+
+```powershell
+dotnet ef migrations add AddActivoWBS --project RenergeIA.Infrastructure --startup-project RenergeIA.Web
+dotnet ef database update --project RenergeIA.Infrastructure --startup-project RenergeIA.Web
+```
+
+> Si al clonar el repo ya existe esa migración en el historial, el comando `dotnet ef database update` la aplica automáticamente y no hay que crearla de nuevo.
+
+### 8.4 Funcionalidades implementadas
+
+#### Vista árbol (ListaWBS.razor)
+
+- Las actividades se muestran con **indentación visual** según su nivel WBS (1.1, 1.1.1, 1.1.1.1...)
+- Orden **numérico correcto** del código WBS: 1.1 → 1.2 → ... → 1.9 → 1.10 → 1.11
+- Tarjetas de resumen: actividades activas, completadas, en progreso, con problemas
+- Toggle **"Mostrar inactivas"** para ver/ocultar actividades desactivadas
+- Cada actividad tiene botón **"✓ Activa" / "Inactiva"** para activar o desactivar al instante
+- Botón **"+Sub"** que abre el formulario de nueva subactividad con el padre ya seleccionado
+
+#### Plantilla tipo EPC fotovoltaico
+
+Al crear el primer WBS de un proyecto, aparecen dos opciones:
+
+```
+[📋 Cargar plantilla]   [+ Nueva actividad manual]
+```
+
+La plantilla carga **110 actividades** organizadas en 4 niveles jerárquicos:
+
+| Sección | Descripción |
+|---|---|
+| 1.1 | Hitos Principales del Contrato (firma EPC, pago anticipo...) |
+| 1.2 | Hitos Generales del Contrato |
+| 1.3 | Permisos de construcción |
+| 1.4 | Estudios de Ingeniería |
+| 1.5 | Pull Out Test |
+| 1.6 | Ingeniería de detalle |
+| 1.7 | Suministros (módulos, inversores, cables MT/BT/Solar, SCADA, CCTV...) |
+| 1.8 | Construcción Planta (obras civiles, mecánicas, eléctricas, pruebas...) |
+| 1.9 | Culminación Sustancial |
+| 1.10 | Cierre |
+| 1.11 | Aceptación Provisional |
+
+**Las fechas se calculan automáticamente** desde la fecha de inicio planificada del proyecto usando los desfases del cronograma original (proyecto Hato Grande). Después de cargar la plantilla, el usuario puede:
+- Desactivar las actividades que no apliquen a este proyecto
+- Editar fechas, responsables o avance en cada actividad
+- Agregar nuevas actividades manualmente
+
+#### Campo Activo en la entidad
+
+Se agregó `bool Activo = true` a `ActividadWBS`. Las actividades inactivas no se borran: quedan en la base de datos pero se filtran de la vista y de los contadores de resumen. Esto permite reactivarlas si vuelven a necesitarse.
+
+### 8.5 Truco de ordenamiento WBS
+
+El código WBS "1.10" se ordena después de "1.2" si se usa orden alfabético. Se resuelve con un método que convierte el código a clave con ceros a la izquierda:
+
+```csharp
+private static string WbsSortKey(string codigo) =>
+    string.Join(".", codigo.Split('.').Select(p => p.PadLeft(4, '0')));
+// "1.10" → "0001.0010"  |  "1.2" → "0001.0002"
+// Resultado: 1.1 → 1.2 → ... → 1.9 → 1.10 → 1.11 ✓
+```
+
+### 8.6 Carga de la plantilla: algoritmo nivel por nivel
+
+Para insertar las ~110 actividades manteniendo la relación padre-hijo:
+
+```csharp
+// Se insertan por nivel (1 → 2 → 3 → 4)
+// Después de cada SaveChanges, EF Core llena el Id generado
+// Se mapea código WBS → Id en un diccionario para asignarlo a los hijos
+
+for (int nivel = 1; nivel <= 4; nivel++)
+{
+    var batch = _plantilla.Where(p => p.Nivel == nivel).ToList();
+    var entities = new List<(string Codigo, ActividadWBS Entity)>();
+
+    foreach (var item in batch)
+    {
+        int? padreId = item.CodigoPadre is not null && idMap.TryGetValue(item.CodigoPadre, out var pid)
+            ? pid : null;
+
+        var act = new ActividadWBS { ..., ActividadPadreId = padreId };
+        Db.ActividadesWBS.Add(act);
+        entities.Add((item.Codigo, act));
+    }
+
+    await Db.SaveChangesAsync(); // ← IDs quedan en act.Id
+
+    foreach (var (codigo, entity) in entities)
+        idMap[codigo] = entity.Id; // ← disponible para el siguiente nivel
+}
+```
+
+### Checklist Etapa 8 ✅
+
+- [x] `ListaWBS.razor` — árbol con indentación, orden numérico, filtros, toggle activo
+- [x] `FormWBS.razor` — crear/editar actividad, campo Activo, slider de avance
+- [x] Campo `Activo` en entidad `ActividadWBS` + migración `AddActivoWBS`
+- [x] Plantilla con 110 actividades tipo EPC fotovoltaico (base: proyecto Hato Grande)
+- [x] Cálculo automático de fechas desde el inicio planificado del proyecto
+- [x] Botón "+Sub" que pasa `?padreId=X` para crear subactividades enlazadas
+- [x] Toggle activa/inactiva por fila sin recargar la página
+- [x] Estado vacío con opciones "Cargar plantilla" o "Nueva actividad manual"
+- [x] Módulo WBS clicable desde el detalle del proyecto
 
 ---
 

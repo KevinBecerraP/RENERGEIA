@@ -18,6 +18,7 @@ public class ActividadWBS : EntidadBase
     public decimal AvancePlanificado { get; set; }
     public decimal AvanceReal { get; set; }
     public EstadoActividad Estado { get; set; } = EstadoActividad.Pendiente;
+    public bool Activo { get; set; } = true;
 
     public Proyecto Proyecto { get; set; } = null!;
     public ActividadWBS? ActividadPadre { get; set; }
