@@ -812,6 +812,103 @@ Usuario hace clic en "Salir"
 
 ---
 
+## ETAPA 5 — Módulo de Proyectos (CRUD completo)
+
+**Objetivo:** Construir las 4 operaciones básicas sobre Proyectos: Listar, Crear, Ver detalle, Editar y Eliminar.
+
+### 5.1 Archivos creados
+
+| Archivo | Ruta | Propósito |
+|---|---|---|
+| `ListaProyectos.razor` | `Pages/Proyectos/` | Lista de proyectos con tarjetas |
+| `NuevoProyecto.razor` | `Pages/Proyectos/` | Formulario de creación |
+| `DetalleProyecto.razor` | `Pages/Proyectos/` | Vista de detalle + botones Editar/Eliminar |
+| `EditarProyecto.razor` | `Pages/Proyectos/` | Formulario de edición |
+
+### 5.2 Cambios en archivos existentes
+
+**`_Imports.razor`** — se agregaron los `@using` globales para no repetirlos en cada página:
+```razor
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+```
+
+**`NavMenu.razor`** — se agregó el enlace a Proyectos y se corrigió el nombre de la app a "RenergeIA".
+
+### 5.3 Patrones usados en este módulo
+
+**Inyección del DbContext directamente en el componente:**
+```razor
+@inject RenergeIADbContext Db
+```
+En Blazor Server es válido inyectar el DbContext directo porque cada circuito Blazor tiene su propio scope. No se necesita Repository ni Service para operaciones simples.
+
+**Modo interactivo para componentes con lógica:**
+```razor
+@rendermode InteractiveServer
+```
+A diferencia del Login (que es SSR puro para manejar cookies), los módulos usan `InteractiveServer` para poder usar `@onclick`, `EditForm`, binding reactivo, etc.
+
+**Validaciones con DataAnnotations:**
+```csharp
+private sealed class FormModel
+{
+    [Required(ErrorMessage = "El código es obligatorio")]
+    [MaxLength(20, ErrorMessage = "Máximo 20 caracteres")]
+    public string Codigo { get; set; } = string.Empty;
+    ...
+}
+```
+Se usa una clase `FormModel` separada de la entidad para no exponer la entidad directamente al formulario. Esto evita problemas de tracking de EF Core.
+
+**Confirmación de eliminación sin modal — inline:**
+```razor
+@if (_confirmarEliminar)
+{
+    <div class="alert alert-danger ...">
+        ¿Seguro que deseas eliminar...?
+        <button @onclick="EliminarAsync">Sí, eliminar</button>
+        <button @onclick="() => _confirmarEliminar = false">Cancelar</button>
+    </div>
+}
+```
+No se usó un modal de Bootstrap para mantener la simplicidad. El mensaje aparece en la misma página.
+
+**Emojis en strings de C# — usar carácter directo, no entidades HTML:**
+```csharp
+// MAL: Blazor trata el string como texto plano, muestra "&#128196;" literal
+("WBS / Actividades", "&#128196;", false)
+
+// BIEN: usar el emoji directamente en el string
+("WBS / Actividades", "📄", false)
+```
+
+### 5.4 Flujo completo verificado
+
+```
+/proyectos          → Lista de proyectos (tarjetas con badge de color por estado)
+/proyectos/nuevo    → Formulario con validaciones → al guardar → /proyectos/{id}
+/proyectos/{id}     → Detalle completo + botones Editar / Eliminar
+/proyectos/{id}/editar → Formulario pre-cargado → al guardar → /proyectos/{id}
+Eliminar            → Confirmación inline → elimina → /proyectos
+```
+
+### Checklist Etapa 5 ✓
+
+- [x] `ListaProyectos.razor` — tarjetas con badge de estado por color
+- [x] `NuevoProyecto.razor` — formulario con validaciones, redirige al detalle al guardar
+- [x] `DetalleProyecto.razor` — info general, cronograma, módulos del proyecto (futuros)
+- [x] `EditarProyecto.razor` — formulario pre-cargado con datos actuales, incluye fechas reales
+- [x] Eliminación con confirmación inline (sin modal)
+- [x] `_Imports.razor` actualizado con usings globales de Core, EF Core y DataAnnotations
+- [x] NavMenu actualizado con enlace a Proyectos
+- [x] Creación, edición y eliminación probadas con datos reales en base de datos
+
+---
+
 ## Cómo correr el proyecto en cualquier momento
 
 ```powershell

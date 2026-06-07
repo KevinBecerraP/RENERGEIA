@@ -21,14 +21,37 @@ else if (_proyecto is null)
 }
 else
 {
-    <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <a href="/proyectos" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
-        <div>
+        <div class="flex-grow-1">
             <h2 class="mb-0">@_proyecto.Nombre</h2>
             <span class="text-muted small">@_proyecto.Codigo</span>
         </div>
-        <span class="badge @BadgeEstado(_proyecto.Estado) ms-2">@NombreEstado(_proyecto.Estado)</span>
+        <span class="badge @BadgeEstado(_proyecto.Estado)">@NombreEstado(_proyecto.Estado)</span>
+        <a href="/proyectos/@Id/editar" class="btn btn-sm btn-outline-primary">Editar</a>
+        <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmarEliminar = true">
+            Eliminar
+        </button>
     </div>
+
+    @if (_confirmarEliminar)
+    {
+        <div class="alert alert-danger d-flex align-items-center gap-3 mb-4">
+            <span>¿Seguro que deseas eliminar el proyecto <strong>@_proyecto.Nombre</strong>? Esta acción no se puede deshacer.</span>
+            <div class="d-flex gap-2 ms-auto">
+                <button class="btn btn-danger btn-sm" @onclick="EliminarAsync" disabled="@_eliminando">
+                    @if (_eliminando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Sí, eliminar
+                </button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => _confirmarEliminar = false">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
 
     <div class="row g-4">
         <!-- Info general -->
@@ -85,7 +108,7 @@ else
             </div>
         </div>
 
-        <!-- Módulos disponibles (próximamente) -->
+        <!-- Módulos del proyecto -->
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header fw-bold" style="background: #1b2838; color: white;">
@@ -118,6 +141,8 @@ else
 
     private Proyecto? _proyecto;
     private bool _cargando = true;
+    private bool _confirmarEliminar;
+    private bool _eliminando;
 
     private readonly List<(string Nombre, string Icono, bool Disponible)> _modulos =
     [
@@ -135,6 +160,18 @@ else
     {
         _proyecto = await Db.Proyectos.FindAsync(Id);
         _cargando = false;
+    }
+
+    private async Task EliminarAsync()
+    {
+        _eliminando = true;
+        var proyecto = await Db.Proyectos.FindAsync(Id);
+        if (proyecto is not null)
+        {
+            Db.Proyectos.Remove(proyecto);
+            await Db.SaveChangesAsync();
+        }
+        Navigation.NavigateTo("/proyectos");
     }
 
     private static string BadgeEstado(EstadoProyecto estado) => estado switch
