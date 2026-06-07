@@ -5,6 +5,60 @@ Actualizar este archivo cada vez que se avance en una nueva etapa o paso.
 
 ---
 
+## Índice de contenidos
+
+| Sección | Descripción |
+|---|---|
+| [¿Cómo obtener el proyecto desde GitHub?](#cómo-obtener-el-proyecto-desde-github) | Clonar, instalar y arrancar en un equipo nuevo |
+| [Hoja de ruta del proyecto](#hoja-de-ruta-del-proyecto) | Estado de todas las etapas planeadas |
+| [Etapa 0 — Decisiones y contexto](#etapa-0--decisiones-previas-y-contexto-del-proyecto) | Tecnologías, arquitectura, fases |
+| [Etapa 1 — Preparación del entorno](#etapa-1--preparación-del-entorno) | Instalación de herramientas, extensiones VS Code |
+| [Etapa 2 — Modelo de datos](#etapa-2--modelo-de-datos-entidades) | Entidades, enums, relaciones |
+| [Etapa 2 Parte 2 — EF Core y base de datos](#etapa-2--parte-2-ef-core-dbcontext-y-base-de-datos) | DbContext, migraciones, SQL Server |
+| [Etapa 3 — Identity y roles](#etapa-3--aspnet-core-identity-autenticación-y-roles) | Login, 13 roles, seeder |
+| [Etapa 4 — Login UI](#etapa-4--página-de-login-y-verificación-de-autenticación) | Página de login, logout, protección de rutas |
+| [Etapa 5 — Módulo Proyectos](#etapa-5--módulo-de-proyectos-crud-completo) | CRUD completo de proyectos |
+| [Etapa 6 — Módulo Personal](#etapa-6--módulo-de-personal-del-proyecto-crud-completo) | CRUD de personal vinculado a proyectos |
+| [Etapa 7 — Módulo Equipos](#etapa-7--módulo-de-equipos-crud-completo) | Maquinaria, horómetros, mantenimientos |
+| [Cómo correr el proyecto](#cómo-correr-el-proyecto-en-cualquier-momento) | Comando para arrancar la app |
+
+---
+
+## Hoja de ruta del proyecto
+
+Estado de cada etapa de desarrollo. Se actualiza al completar cada una.
+
+### Fase 1 — Núcleo del sistema (Módulos base)
+
+| # | Etapa | Descripción | Estado |
+|---|---|---|---|
+| 0 | Contexto y decisiones | Tecnologías, arquitectura, fases del proyecto | ✅ Completo |
+| 1 | Entorno | .NET 10, SQL Server, VS Code, extensiones | ✅ Completo |
+| 2 | Modelo de datos | 20 entidades, 12 enums, EF Core, migraciones | ✅ Completo |
+| 3 | Identity y roles | Login, 13 roles, seeder de admin | ✅ Completo |
+| 4 | Login UI | Página de login, logout, rutas protegidas | ✅ Completo |
+| 5 | Proyectos | CRUD completo (listar, crear, ver, editar, eliminar) | ✅ Completo |
+| 6 | Personal | CRUD de personas por proyecto, filtros, activo/inactivo | ✅ Completo |
+| 7 | Equipos | CRUD de maquinaria por proyecto | 🔄 En progreso |
+| 8 | WBS / Actividades | Estructura de desglose de trabajo, jerarquía de tareas | ⏳ Pendiente |
+| 9 | Informe Diario | Registro diario de avance por actividad | ⏳ Pendiente |
+| 10 | Documentos | Gestión documental con versiones | ⏳ Pendiente |
+| 11 | Costos | Partidas presupuestales y costos reales | ⏳ Pendiente |
+| 12 | No Conformidades | Registro de NC y acciones correctivas | ⏳ Pendiente |
+| 13 | Restricciones | Registro y seguimiento de restricciones | ⏳ Pendiente |
+| 14 | Alertas | Sistema de alertas automáticas | ⏳ Pendiente |
+| 15 | Dashboard | Inicio con métricas y resumen ejecutivo | ⏳ Pendiente |
+
+### Fase 2 — Inteligencia y conectividad (futuro)
+
+| # | Etapa | Descripción | Estado |
+|---|---|---|---|
+| 16 | Dashboard gerencial avanzado | KPIs, gráficas, exportación PDF | ⏳ Fase 2 |
+| 17 | IA con OpenAI API | Predicción de atrasos, análisis de riesgo | ⏳ Fase 2 |
+| 18 | Reportes automáticos | Generación de informes PDF con QuestPDF | ⏳ Fase 2 |
+
+---
+
 ## ¿Cómo obtener el proyecto desde GitHub?
 
 Si alguien necesita trabajar en este proyecto en un computador nuevo (o el equipo crece y entra otra persona), no es necesario empezar desde cero. Todo el código está en GitHub y se puede descargar en minutos.
