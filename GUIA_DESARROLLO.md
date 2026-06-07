@@ -39,8 +39,8 @@ Estado de cada etapa de desarrollo. Se actualiza al completar cada una.
 | 4 | Login UI | Página de login, logout, rutas protegidas | ✅ Completo |
 | 5 | Proyectos | CRUD completo (listar, crear, ver, editar, eliminar) | ✅ Completo |
 | 6 | Personal | CRUD de personas por proyecto, filtros, activo/inactivo | ✅ Completo |
-| 7 | Equipos | CRUD de maquinaria por proyecto | 🔄 En progreso |
-| 8 | WBS / Actividades | Estructura de desglose de trabajo, jerarquía de tareas | ⏳ Pendiente |
+| 7 | Equipos | CRUD de maquinaria por proyecto | ✅ Completo |
+| 8 | WBS / Actividades | Estructura de desglose de trabajo, jerarquía de tareas | 🔄 En progreso |
 | 9 | Informe Diario | Registro diario de avance por actividad | ⏳ Pendiente |
 | 10 | Documentos | Gestión documental con versiones | ⏳ Pendiente |
 | 11 | Costos | Partidas presupuestales y costos reales | ⏳ Pendiente |
@@ -1109,6 +1109,55 @@ _modulos =
 - [x] Badge de color por tipo: Empleado (azul), Contratista (celeste), Subcontratista (amarillo), Visitante (gris)
 - [x] Estado Activo/Inactivo reflejado en tiempo real en la tabla
 - [x] Módulo Personal clicable desde el detalle del proyecto
+- [x] Creación, edición y cambio de estado probados con datos reales
+
+---
+
+## ETAPA 7 — Módulo de Equipos y Maquinaria (CRUD completo)
+
+**Objetivo:** Registrar toda la maquinaria, vehículos y herramientas vinculadas a cada proyecto, con control de estado activo/inactivo y filtros.
+
+### 7.1 Archivos creados
+
+| Archivo | Ruta | Propósito |
+|---|---|---|
+| `ListaEquipos.razor` | `Pages/Equipos/` | Tabla con filtros por tipo y estado |
+| `FormEquipo.razor` | `Pages/Equipos/` | Formulario único para crear y editar |
+
+### 7.2 Rutas del módulo
+
+```
+/proyectos/{id}/equipos                     → Lista de equipos del proyecto
+/proyectos/{id}/equipos/nuevo               → Formulario de creación
+/proyectos/{id}/equipos/{equipoId}/editar   → Formulario de edición
+```
+
+### 7.3 Tipos de equipo y colores de badge
+
+| Tipo | Badge | Ejemplos |
+|---|---|---|
+| Vehículo | Azul | Camioneta, volqueta, bus de personal |
+| Maquinaria Pesada | Rojo | Retroexcavadora, minicargador, grúa |
+| Herramienta Menor | Amarillo | Taladro, esmeril, compresor |
+| Equipo de Medición | Celeste | Nivel, teodolito, multímetro |
+| Equipo de Seguridad | Verde | Arnés, detector de gases |
+| Otro | Gris | Cualquier otro equipo |
+
+### 7.4 Módulo Equipos activado en DetalleProyecto
+
+```csharp
+("Equipos", "⚙️", true, $"/proyectos/{Id}/equipos"),
+```
+
+### Checklist Etapa 7 ✅
+
+- [x] `ListaEquipos.razor` — tabla con búsqueda por texto, filtro por tipo y estado
+- [x] `FormEquipo.razor` — formulario único para crear y editar (dos rutas `@page`)
+- [x] Vinculación por `ProyectoId` en la URL
+- [x] Badge de color por tipo de equipo (6 tipos)
+- [x] Estado Activo/Inactivo con filtro reactivo
+- [x] Eliminación con confirmación inline
+- [x] Módulo Equipos clicable desde el detalle del proyecto
 - [x] Creación, edición y cambio de estado probados con datos reales
 
 ---

@@ -1,0 +1,177 @@
+@page "/proyectos/{ProyectoId:int}/equipos"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>Equipos — RenergeIA</PageTitle>
+
+@if (_proyecto is null && !_cargando)
+{
+    <div class="text-center py-5">
+        <h4 class="text-muted">Proyecto no encontrado</h4>
+        <a href="/proyectos" class="btn btn-primary mt-3">Volver</a>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <a href="/proyectos/@ProyectoId" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <div class="flex-grow-1">
+            <h2 class="mb-0">Equipos y Maquinaria</h2>
+            @if (_proyecto is not null)
+            {
+                <span class="text-muted small">@_proyecto.Nombre</span>
+            }
+        </div>
+        <a href="/proyectos/@ProyectoId/equipos/nuevo" class="btn btn-primary">+ Agregar Equipo</a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm"
+                   placeholder="Buscar por código, nombre, marca..."
+                   @bind="_busqueda" @bind:event="oninput" />
+        </div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="_filtroTipo">
+                <option value="">Todos los tipos</option>
+                <option value="Vehiculo">Vehículo</option>
+                <option value="MaquinariaPesada">Maquinaria Pesada</option>
+                <option value="HerramientaMenor">Herramienta Menor</option>
+                <option value="EquipoMedicion">Equipo de Medición</option>
+                <option value="EquipoSeguridad">Equipo de Seguridad</option>
+                <option value="Otro">Otro</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="_filtroActivo">
+                <option value="true">Solo activos</option>
+                <option value="">Activos e inactivos</option>
+                <option value="false">Solo inactivos</option>
+            </select>
+        </div>
+    </div>
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (!EquiposFiltrados.Any())
+    {
+        <div class="text-center py-5">
+            <div style="font-size:3rem;">⚙️</div>
+            <h5 class="text-muted mt-3">No hay equipos registrados</h5>
+            <a href="/proyectos/@ProyectoId/equipos/nuevo" class="btn btn-primary mt-2">Agregar equipo</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre / Marca</th>
+                        <th>Tipo</th>
+                        <th>N° Serie</th>
+                        <th>Propietario</th>
+                        <th>Ingreso</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in EquiposFiltrados)
+                    {
+                        <tr class="@(e.Activo ? "" : "text-muted")">
+                            <td class="fw-semibold small">@e.Codigo</td>
+                            <td>
+                                <div class="fw-semibold">@e.Nombre</div>
+                                <div class="small text-muted">@e.Marca @e.Modelo</div>
+                            </td>
+                            <td><span class="badge @BadgeTipo(e.TipoEquipo)">@NombreTipo(e.TipoEquipo)</span></td>
+                            <td class="small text-muted">@(string.IsNullOrEmpty(e.NumeroSerie) ? "—" : e.NumeroSerie)</td>
+                            <td class="small">@e.Propietario</td>
+                            <td class="small">@e.FechaIngreso.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (e.Activo)
+                                {
+                                    <span class="badge bg-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                }
+                            </td>
+                            <td>
+                                <a href="/proyectos/@ProyectoId/equipos/@e.Id/editar"
+                                   class="btn btn-sm btn-outline-primary">Editar</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="text-muted small">@EquiposFiltrados.Count() equipo(s) encontrado(s)</div>
+    }
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private List<Equipo> _equipos = new();
+    private bool _cargando = true;
+    private string _busqueda    = string.Empty;
+    private string _filtroTipo  = string.Empty;
+    private string _filtroActivo = "true";
+
+    private IEnumerable<Equipo> EquiposFiltrados => _equipos
+        .Where(e =>
+            (string.IsNullOrEmpty(_busqueda) ||
+             $"{e.Codigo} {e.Nombre} {e.Marca} {e.Modelo} {e.Propietario}"
+                 .Contains(_busqueda, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(_filtroTipo)   || e.TipoEquipo.ToString() == _filtroTipo) &&
+            (string.IsNullOrEmpty(_filtroActivo) || e.Activo.ToString().ToLower() == _filtroActivo)
+        )
+        .OrderBy(e => e.Codigo);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+        if (_proyecto is not null)
+        {
+            _equipos = await Db.Equipos
+                .Where(e => e.ProyectoId == ProyectoId)
+                .OrderBy(e => e.Codigo)
+                .ToListAsync();
+        }
+        _cargando = false;
+    }
+
+    private static string BadgeTipo(TipoEquipo tipo) => tipo switch
+    {
+        TipoEquipo.Vehiculo         => "bg-primary",
+        TipoEquipo.MaquinariaPesada => "bg-danger",
+        TipoEquipo.HerramientaMenor => "bg-warning text-dark",
+        TipoEquipo.EquipoMedicion   => "bg-info text-dark",
+        TipoEquipo.EquipoSeguridad  => "bg-success",
+        TipoEquipo.Otro             => "bg-secondary",
+        _                           => "bg-secondary"
+    };
+
+    private static string NombreTipo(TipoEquipo tipo) => tipo switch
+    {
+        TipoEquipo.Vehiculo         => "Vehículo",
+        TipoEquipo.MaquinariaPesada => "Maq. Pesada",
+        TipoEquipo.HerramientaMenor => "Herramienta",
+        TipoEquipo.EquipoMedicion   => "Medición",
+        TipoEquipo.EquipoSeguridad  => "Seguridad",
+        TipoEquipo.Otro             => "Otro",
+        _                           => tipo.ToString()
+    };
+}

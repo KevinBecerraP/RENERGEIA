@@ -1,0 +1,261 @@
+@page "/proyectos/{ProyectoId:int}/equipos/nuevo"
+@page "/proyectos/{ProyectoId:int}/equipos/{EquipoId:int}/editar"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Navigation
+
+<PageTitle>@(_esNuevo ? "Agregar Equipo" : "Editar Equipo") — RenergeIA</PageTitle>
+
+@if (_cargando)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/proyectos/@ProyectoId/equipos" class="btn btn-sm btn-outline-secondary">&#8592; Volver</a>
+        <h2 class="mb-0">@(_esNuevo ? "Agregar Equipo" : "Editar Equipo")</h2>
+    </div>
+
+    <div class="card shadow-sm border-0" style="max-width: 800px;">
+        <div class="card-body p-4">
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+
+                <h5 class="text-muted mb-3 border-bottom pb-2">Identificación del Equipo</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Codigo" placeholder="Ej: EQ-001" />
+                        <ValidationMessage For="() => _form.Codigo" class="text-danger small" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Nombre / Descripción <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Nombre" placeholder="Ej: Retroexcavadora CAT 320" />
+                        <ValidationMessage For="() => _form.Nombre" class="text-danger small" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+                        <InputSelect class="form-select" @bind-Value="_form.TipoEquipo">
+                            <option value="@TipoEquipo.Vehiculo">Vehículo</option>
+                            <option value="@TipoEquipo.MaquinariaPesada">Maquinaria Pesada</option>
+                            <option value="@TipoEquipo.HerramientaMenor">Herramienta Menor</option>
+                            <option value="@TipoEquipo.EquipoMedicion">Equipo de Medición</option>
+                            <option value="@TipoEquipo.EquipoSeguridad">Equipo de Seguridad</option>
+                            <option value="@TipoEquipo.Otro">Otro</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Marca</label>
+                        <InputText class="form-control" @bind-Value="_form.Marca" placeholder="Ej: Caterpillar" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Modelo</label>
+                        <InputText class="form-control" @bind-Value="_form.Modelo" placeholder="Ej: 320D" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Número de Serie / Placa</label>
+                        <InputText class="form-control" @bind-Value="_form.NumeroSerie" placeholder="N° serie, placa o identificador" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Propietario <span class="text-danger">*</span></label>
+                        <InputText class="form-control" @bind-Value="_form.Propietario" placeholder="Empresa o persona dueña del equipo" />
+                        <ValidationMessage For="() => _form.Propietario" class="text-danger small" />
+                    </div>
+                </div>
+
+                <h5 class="text-muted mb-3 border-bottom pb-2 mt-4">Vinculación al Proyecto</h5>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Fecha de Ingreso <span class="text-danger">*</span></label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaIngreso" />
+                        <ValidationMessage For="() => _form.FechaIngreso" class="text-danger small" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Fecha de Salida</label>
+                        <InputDate class="form-control" @bind-Value="_form.FechaSalida" />
+                        <div class="form-text">Dejar vacío si sigue en el proyecto</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Estado</label>
+                        <InputSelect class="form-select" @bind-Value="_form.Activo">
+                            <option value="true">Activo</option>
+                            <option value="false">Inactivo</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4" disabled="@_guardando">
+                        @if (_guardando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(_esNuevo ? "Agregar" : "Guardar Cambios")
+                    </button>
+
+                    @if (!_esNuevo)
+                    {
+                        <button type="button" class="btn btn-outline-danger"
+                                @onclick="() => _confirmarEliminar = true">
+                            Eliminar
+                        </button>
+                    }
+
+                    <a href="/proyectos/@ProyectoId/equipos" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+
+                @if (_confirmarEliminar)
+                {
+                    <div class="alert alert-danger d-flex align-items-center gap-3 mt-3">
+                        <span>¿Eliminar el equipo <strong>@_form.Nombre</strong>? Esta acción no se puede deshacer.</span>
+                        <div class="d-flex gap-2 ms-auto">
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="EliminarAsync">Sí, eliminar</button>
+                            <button type="button" class="btn btn-secondary btn-sm" @onclick="() => _confirmarEliminar = false">Cancelar</button>
+                        </div>
+                    </div>
+                }
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int? EquipoId  { get; set; }
+
+    private FormModel _form = new();
+    private bool _esNuevo => EquipoId is null;
+    private string? _error;
+    private bool _cargando = true;
+    private bool _guardando;
+    private bool _confirmarEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_esNuevo)
+        {
+            var equipo = await Db.Equipos.FindAsync(EquipoId);
+            if (equipo is not null)
+            {
+                _form = new FormModel
+                {
+                    Codigo       = equipo.Codigo,
+                    Nombre       = equipo.Nombre,
+                    TipoEquipo   = equipo.TipoEquipo,
+                    Marca        = equipo.Marca,
+                    Modelo       = equipo.Modelo,
+                    NumeroSerie  = equipo.NumeroSerie,
+                    Propietario  = equipo.Propietario,
+                    FechaIngreso = equipo.FechaIngreso,
+                    FechaSalida  = equipo.FechaSalida,
+                    Activo       = equipo.Activo
+                };
+            }
+        }
+        _cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_esNuevo)
+            {
+                var equipo = new Equipo
+                {
+                    ProyectoId   = ProyectoId,
+                    Codigo       = _form.Codigo.Trim(),
+                    Nombre       = _form.Nombre.Trim(),
+                    TipoEquipo   = _form.TipoEquipo,
+                    Marca        = _form.Marca.Trim(),
+                    Modelo       = _form.Modelo.Trim(),
+                    NumeroSerie  = _form.NumeroSerie.Trim(),
+                    Propietario  = _form.Propietario.Trim(),
+                    FechaIngreso = _form.FechaIngreso,
+                    FechaSalida  = _form.FechaSalida,
+                    Activo       = _form.Activo,
+                    FechaCreacion = DateTime.UtcNow
+                };
+                Db.Equipos.Add(equipo);
+            }
+            else
+            {
+                var equipo = await Db.Equipos.FindAsync(EquipoId);
+                if (equipo is null) { Navigation.NavigateTo($"/proyectos/{ProyectoId}/equipos"); return; }
+
+                equipo.Codigo       = _form.Codigo.Trim();
+                equipo.Nombre       = _form.Nombre.Trim();
+                equipo.TipoEquipo   = _form.TipoEquipo;
+                equipo.Marca        = _form.Marca.Trim();
+                equipo.Modelo       = _form.Modelo.Trim();
+                equipo.NumeroSerie  = _form.NumeroSerie.Trim();
+                equipo.Propietario  = _form.Propietario.Trim();
+                equipo.FechaIngreso = _form.FechaIngreso;
+                equipo.FechaSalida  = _form.FechaSalida;
+                equipo.Activo       = _form.Activo;
+            }
+
+            await Db.SaveChangesAsync();
+            Navigation.NavigateTo($"/proyectos/{ProyectoId}/equipos");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+            _guardando = false;
+        }
+    }
+
+    private async Task EliminarAsync()
+    {
+        var equipo = await Db.Equipos.FindAsync(EquipoId);
+        if (equipo is not null)
+        {
+            Db.Equipos.Remove(equipo);
+            await Db.SaveChangesAsync();
+        }
+        Navigation.NavigateTo($"/proyectos/{ProyectoId}/equipos");
+    }
+
+    private sealed class FormModel
+    {
+        [Required(ErrorMessage = "El código es obligatorio")]
+        [MaxLength(20)]
+        public string Codigo { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        public string Nombre { get; set; } = string.Empty;
+
+        public TipoEquipo TipoEquipo { get; set; } = TipoEquipo.Vehiculo;
+        public string Marca          { get; set; } = string.Empty;
+        public string Modelo         { get; set; } = string.Empty;
+        public string NumeroSerie    { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El propietario es obligatorio")]
+        public string Propietario    { get; set; } = string.Empty;
+
+        public DateTime FechaIngreso { get; set; } = DateTime.Today;
+        public DateTime? FechaSalida { get; set; }
+        public bool Activo           { get; set; } = true;
+    }
+}
