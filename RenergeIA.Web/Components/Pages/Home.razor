@@ -1,0 +1,12 @@
+﻿@page "/"
+@attribute [Authorize]
+
+<PageTitle>Inicio — RenergeIA</PageTitle>
+
+<h1>Bienvenido a RenergeIA</h1>
+
+<AuthorizeView>
+    <Authorized>
+        <p>Sesión iniciada como: <strong>@context.User.Identity?.Name</strong></p>
+    </Authorized>
+</AuthorizeView>

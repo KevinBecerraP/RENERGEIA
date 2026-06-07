@@ -1,0 +1,11 @@
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\bin\Debug\net10.0\RenergeIA.Core.deps.json
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\bin\Debug\net10.0\RenergeIA.Core.dll
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\bin\Debug\net10.0\RenergeIA.Core.pdb
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.AssemblyInfoInputs.cache
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.AssemblyInfo.cs
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.csproj.CoreCompileInputs.cache
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.dll
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\refint\RenergeIA.Core.dll
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\RenergeIA.Core.pdb
+C:\Users\Ing. Kevin\Desktop\PROYECTO AGENTE\RenergeIA.Core\obj\Debug\net10.0\ref\RenergeIA.Core.dll

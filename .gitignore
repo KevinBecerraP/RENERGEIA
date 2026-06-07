@@ -1,0 +1,38 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## Publish
+publish/
+out/
+
+## EF Core migrations snapshot temporal
+# (no ignorar las migraciones reales)
+
+## Secretos y configuración local
+appsettings.Local.json
+appsettings.Development.json
+*.pfx
+*.key
+
+## Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## VS Code
+.vscode/
+!.vscode/extensions.json
+
+## Logs
+*.log
+logs/
+
+## NuGet
+*.nupkg
+.nuget/
+packages/
