@@ -5,6 +5,7 @@ namespace RenergeIA.Core.Entities;
 public class RegistroClima : EntidadBase
 {
     public int ProyectoId { get; set; }
+    public int? InformeDiarioId { get; set; }
     public DateTime Fecha { get; set; }
     public CondicionClimatica Condicion { get; set; }
     public decimal? TemperaturaMaxima { get; set; }
@@ -17,4 +18,5 @@ public class RegistroClima : EntidadBase
     public string Observaciones { get; set; } = string.Empty;
 
     public Proyecto Proyecto { get; set; } = null!;
+    public InformeDiario? InformeDiario { get; set; }
 }

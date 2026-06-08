@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 # RenergeIA — Guía de Desarrollo Paso a Paso
 
 Registro completo de todo lo construido: qué se hizo, por qué, en qué orden y cómo.  
@@ -21,6 +28,7 @@ Actualizar este archivo cada vez que se avance en una nueva etapa o paso.
 | [Etapa 6 — Módulo Personal](#etapa-6--módulo-de-personal-del-proyecto-crud-completo) | CRUD de personal vinculado a proyectos |
 | [Etapa 7 — Módulo Equipos](#etapa-7--módulo-de-equipos-crud-completo) | Maquinaria, horómetros, mantenimientos |
 | [Etapa 8 — Módulo WBS](#etapa-8--módulo-wbs--estructura-de-actividades) | Árbol de tareas, plantilla tipo EPC fotovoltaico |
+| [Etapa 9 — Módulo Informe Diario](#etapa-9--módulo-informe-diario--avance-diario) | Análisis arquitectónico, transformación Excel → Web |
 | [Cómo correr el proyecto](#cómo-correr-el-proyecto-en-cualquier-momento) | Comando para arrancar la app |
 
 ---
@@ -42,7 +50,7 @@ Estado de cada etapa de desarrollo. Se actualiza al completar cada una.
 | 6 | Personal | CRUD de personas por proyecto, filtros, activo/inactivo | ✅ Completo |
 | 7 | Equipos | CRUD de maquinaria por proyecto | ✅ Completo |
 | 8 | WBS / Actividades | Árbol de tareas, plantilla tipo EPC, activar/desactivar | ✅ Completo |
-| 9 | Informe Diario | Registro diario de avance por actividad | ⏳ Pendiente |
+| 9 | Informe Diario | Registro diario de avance por actividad | ✅ Completo |
 | 10 | Documentos | Gestión documental con versiones | ⏳ Pendiente |
 | 11 | Costos | Partidas presupuestales y costos reales | ⏳ Pendiente |
 | 12 | No Conformidades | Registro de NC y acciones correctivas | ⏳ Pendiente |
@@ -1292,6 +1300,554 @@ for (int nivel = 1; nivel <= 4; nivel++)
 - [x] Toggle activa/inactiva por fila sin recargar la página
 - [x] Estado vacío con opciones "Cargar plantilla" o "Nueva actividad manual"
 - [x] Módulo WBS clicable desde el detalle del proyecto
+
+---
+
+## ETAPA 9 — Módulo Informe Diario / Avance Diario
+
+**Estado:** 📋 Análisis y diseño arquitectónico en progreso  
+**Fecha inicio:** 08/06/2026
+
+### 9.1 Contexto y desafío
+
+El Informe Diario es **el módulo central del sistema** — aquí se registra el avance real de las actividades, se compara contra lo programado, se generan alertas y se alimentan los indicadores del proyecto.
+
+**Desafío principal:** La empresa actualmente usa una **plantilla Excel compleja** con múltiples hojas interconectadas mediante fórmulas. El objetivo NO es replicar el Excel como página web, sino **extraer la lógica funcional** y convertirla en un sistema web moderno.
+
+### 9.2 Principio rector del módulo
+
+> **El cronograma/WBS es la fuente maestra.**
+
+- El Informe Diario **NO permite crear actividades nuevas**
+- Las actividades del Informe Diario provienen exclusivamente del módulo WBS
+- Solo las actividades **activas** (`Activo = true`) aparecen en el informe
+- Si una actividad se desactiva, desaparece de futuros informes (los históricos se conservan)
+
+### 9.3 Flujo funcional del módulo
+
+```
+1. Usuario accede a "Informes Diarios" de un Proyecto
+   ↓
+2. Crea nuevo Informe Diario para una fecha específica
+   ↓
+3. Sistema carga automáticamente:
+   - Actividades WBS ACTIVAS del proyecto
+   - Para cada actividad crea un RegistroAvanceDiario vacío
+   - Calcula AvanceEsperado según fechas planificadas
+   ↓
+4. Usuario registra por cada actividad:
+   - Cantidad ejecutada del día
+   - Porcentaje de avance (o se calcula automáticamente)
+   - Personal asignado + horas
+   - Equipos utilizados + horas
+   - Restricciones encontradas
+   - Fotografías
+   - Observaciones
+   ↓
+5. Sistema calcula automáticamente:
+   - Avance esperado vs avance real
+   - Desviación
+   - Días de atraso
+   - Estado (Al día / Atrasado / Adelantado)
+   - Genera alertas si desviación > 5%
+   ↓
+6. Usuario registra información general:
+   - Clima del día
+   - Restricciones generales
+   - Observaciones del proyecto
+   - Fotografías generales
+   ↓
+7. Usuario cambia estado:
+   Borrador → En Revisión
+   ↓
+8. Director de Proyecto revisa:
+   - Aprueba → Informe bloqueado
+   - Rechaza → Vuelve a Borrador con observaciones
+   ↓
+9. Informe Aprobado alimenta:
+   - Curva S
+   - Dashboard del proyecto
+   - Reportes
+   - Indicadores SPI
+```
+
+### 9.4 Diagnóstico del estado actual
+
+#### Entidades existentes que se reutilizan ✅
+
+- `InformeDiario` — base creada
+- `RegistroAvanceDiario` — base creada
+- `ActividadWBS` — completa con fechas planificadas
+- `Proyecto` — base completa
+- `PersonalProyecto` — completa
+- `Equipo` — completo
+- `RegistroClima` — completo
+- `Restriccion` — completa
+- `Fotografia` — completa
+- `Alerta` — base creada
+
+#### Campos faltantes identificados ⚠️
+
+**En `InformeDiario` (7 campos):**
+```csharp
+public EstadoInforme Estado { get; set; }          // Borrador, EnRevision, Aprobado, Rechazado, Anulado
+public string? RevisadoPor { get; set; }           // Director que revisa
+public DateTime? FechaRevision { get; set; }
+public string? MotivoRechazo { get; set; }
+public int Version { get; set; } = 1;              // Trazabilidad
+public string? ComentariosGenerales { get; set; }
+public int? InformeDiarioAnteriorId { get; set; }  // Versionado
+```
+
+**En `RegistroAvanceDiario` (8 campos + relaciones M:N):**
+```csharp
+public decimal CantidadEjecutadaDia { get; set; }  // Cantidad física del día
+public decimal AvanceEsperado { get; set; }        // Calculado automáticamente
+public decimal AvanceAcumulado { get; set; }       // Suma de todos los avances
+public decimal Desviacion { get; set; }            // Real - Esperado
+public int DiasAtraso { get; set; }
+public EstadoAvance Estado { get; set; }           // AlDia, Atrasado, Adelantado
+public string? Novedades { get; set; }
+public decimal? HorasAfectadasClima { get; set; }
+
+// Relaciones muchos a muchos:
+public ICollection<PersonalProyecto> PersonalAsignado { get; set; }
+public ICollection<Equipo> EquiposUtilizados { get; set; }
+public ICollection<Restriccion> RestriccionesRelacionadas { get; set; }
+```
+
+**En `ActividadWBS` (6 campos para cálculos):**
+```csharp
+public decimal CantidadTotal { get; set; }              // Cantidad total planificada
+public string Unidad { get; set; }                      // m, kg, und, global, etc.
+public decimal CantidadEjecutadaAcumulada { get; set; }
+public bool EsCritica { get; set; }                     // Ruta crítica
+public string? Disciplina { get; set; }                 // Civil, Eléctrico, Mecánico
+public string? FrenteTrabajo { get; set; }
+```
+
+#### Nuevas entidades requeridas
+
+**Enums:**
+```csharp
+public enum EstadoInforme { Borrador, EnRevision, Aprobado, Rechazado, Anulado }
+public enum EstadoAvance { AlDia, Atrasado, Adelantado }
+```
+
+**Tablas intermedias (M:N):**
+```csharp
+// RegistroAvancePersonal — qué personal trabajó en cada actividad
+public class RegistroAvancePersonal
+{
+    public int RegistroAvanceDiarioId { get; set; }
+    public int PersonalProyectoId { get; set; }
+    public decimal HorasTrabajadas { get; set; }
+}
+
+// RegistroAvanceEquipo — qué equipos se usaron
+public class RegistroAvanceEquipo
+{
+    public int RegistroAvanceDiarioId { get; set; }
+    public int EquipoId { get; set; }
+    public decimal HorasUtilizadas { get; set; }
+}
+
+// RegistroAvanceRestriccion — restricciones que afectaron la actividad
+public class RegistroAvanceRestriccion
+{
+    public int RegistroAvanceDiarioId { get; set; }
+    public int RestriccionId { get; set; }
+}
+```
+
+### 9.5 Cálculos automáticos requeridos
+
+#### Avance esperado
+```csharp
+// Fórmula:
+AvanceEsperado = ((FechaInforme - FechaInicio) / (FechaFin - FechaInicio)) * 100
+
+// Ejemplo:
+// Actividad: Hincado | Inicio: 01/06/2026 | Fin: 30/06/2026 | Informe: 15/06/2026
+// Días totales: 30 | Días transcurridos: 15
+// Avance esperado: (15/30) * 100 = 50%
+```
+
+#### Avance real
+```csharp
+// Opción 1: Por cantidad
+AvanceReal = (CantidadEjecutadaAcumulada / CantidadTotal) * 100
+
+// Opción 2: Por porcentaje directo (actividades sin cantidad medible)
+AvanceReal = AvanceReportado
+```
+
+#### Desviación y estado
+```csharp
+Desviacion = AvanceReal - AvanceEsperado
+
+if (Desviacion >= 0) 
+    Estado = EstadoAvance.AlDia o Adelantado
+else if (Desviacion < -5) 
+{
+    Estado = EstadoAvance.Atrasado;
+    // GENERAR ALERTA AUTOMÁTICA
+}
+```
+
+#### Indicador SPI (Schedule Performance Index)
+```csharp
+SPI = AvanceReal / AvanceEsperado
+
+// Interpretación:
+// SPI >= 1.0  → Al día o adelantado
+// 0.95-1.0    → Leve atraso
+// SPI < 0.95  → Atraso significativo
+```
+
+### 9.6 Reglas de negocio
+
+1. **Un proyecto solo puede tener UN informe por fecha** (constraint unique en BD)
+2. **Solo actividades con `Activo = true`** se cargan en nuevos informes
+3. **Estados del informe:**
+   - `Borrador` → se puede editar libremente
+   - `EnRevision` → solo lectura para el creador
+   - `Aprobado` → bloqueado, no se edita (crear nueva versión si es necesario)
+   - `Rechazado` → vuelve a Borrador con observaciones
+   - `Anulado` → registro histórico, no afecta cálculos
+
+4. **Alertas automáticas se generan cuando:**
+   - Desviación < -5%
+   - Actividad crítica atrasada
+   - Actividad sin reporte en 2 días
+   - Restricción vencida
+   - Avance > 100% (inconsistencia)
+   - Variación > 30% vs día anterior
+
+### 9.7 Decisiones arquitectónicas pendientes
+
+#### ❓ Pregunta 1: ¿Cómo transformar el Excel en el sistema?
+
+**El Excel actual tiene múltiples hojas:**
+- Hojas tipo "BD" (bases de datos diarias por actividad)
+- Hojas tipo "Curva S" (cálculos y gráficas)
+- Hojas tipo "Resumen" (consolidación)
+- Hoja "Informe Diario" (reporte final)
+
+**Transformación propuesta:**
+
+```
+┌─────────────────────────────────────────────┐
+│         EXCEL → SISTEMA WEB                 │
+├─────────────────────────────────────────────┤
+│ Hojas "BD"     → Tabla RegistroAvanceDiario │
+│ Fórmulas Excel → Servicios C# (CalculoAvanceService) │
+│ Hojas "Curva S" → Componente gráfico (Chart.js/ApexCharts) │
+│ Hojas "Resumen" → Dashboard (componentes Blazor) │
+│ Informe final  → Vista/Reporte web (exportable a PDF) │
+└─────────────────────────────────────────────┘
+```
+
+#### ❓ Pregunta 2: ¿Cuándo calcular los indicadores?
+
+**Opción A: On-demand** (recomendada para la mayoría)
+- Los cálculos se ejecutan cuando el usuario abre un dashboard/reporte
+- Siempre actualizado
+- Puede ser lento si hay muchos datos (optimizable con índices)
+
+**Opción B: Calcular y guardar**
+- Los cálculos se guardan como campos en la BD
+- Más rápido al consultar
+- Requiere recalcular si hay cambios
+
+**Decisión tomada:** Híbrido
+- Campos básicos (AvanceEsperado, Desviación) → se calculan y guardan al crear registro
+- Indicadores agregados (SPI, Curva S) → se calculan on-demand con cache en memoria
+
+#### ❓ Pregunta 3: ¿Cómo estructurar la captura diaria?
+
+**Opción elegida:** Un informe diario agrupa todos los registros de avance del día.
+
+```
+InformeDiario (fecha: 08/06/2026)
+├─ RegistroAvanceDiario → Actividad: Hincado (52% avance)
+│  ├─ Personal: Juan (8h), Carlos (8h), María (6h)
+│  ├─ Equipos: Grúa GR-001 (7h), Excavadora EX-002 (6h)
+│  ├─ Restricciones: RES-045 (Falta material)
+│  └─ Fotografías: 3 fotos
+├─ RegistroAvanceDiario → Actividad: Montaje estructuras (60% avance)
+│  └─ ...
+└─ Registro clima, observaciones generales, fotos generales
+```
+
+### 9.8 Pendientes antes de implementar
+
+**⚠️ INFORMACIÓN FALTANTE DEL EXCEL:**
+
+Para diseñar correctamente el modelo de datos y el flujo, necesitamos saber:
+
+1. **¿Cuántas hojas tipo "BD" tiene el Excel?** (¿una por actividad? ¿cuántas actividades?)
+2. **¿Qué hojas tipo "Curva S" existen?** (¿una por disciplina? ¿por frente de trabajo?)
+3. **¿Qué hojas tipo "Resumen" hay?**
+4. **¿La hoja "Informe Diario" es la que se imprime/exporta al final?**
+5. **¿Hay otras hojas adicionales?** (clima, personal, equipos, restricciones como hojas separadas o están integradas)
+
+**Una vez tengamos esta información, podemos:**
+- Confirmar el modelo de datos definitivo
+- Crear las migraciones
+- Diseñar las pantallas exactas
+- Implementar la lógica de cálculo
+
+### 9.9 Migraciones necesarias (preliminar)
+
+Cuando se apruebe el diseño final, se creará la migración:
+
+```powershell
+dotnet ef migrations add AgregarCamposModuloInformeDiario --project RenergeIA.Infrastructure --startup-project RenergeIA.Web
+```
+
+**Cambios estimados:**
+- 6 tablas modificadas (23 columnas nuevas)
+- 3 tablas nuevas (M:N)
+- 2 enums nuevos
+- Índices para optimización de consultas
+- Constraint único: `ProyectoId + Fecha` en InformesDiarios
+
+### 9.10 Estimación de esfuerzo
+
+| Fase | Descripción | Tiempo estimado |
+|---|---|---|
+| Fase 1 | Modelo de datos (entidades, enums, migración) | 2-3 horas |
+| Fase 2 | Capa Infrastructure (DbContext, repositorios) | 1-2 horas |
+| Fase 3 | UI básica (lista, crear, ver informe) | 4-6 horas |
+| Fase 4 | Lógica de negocio (cálculos, alertas, estados) | 3-4 horas |
+| Fase 5 | Dashboard e indicadores (Curva S, KPIs) | 2-3 horas |
+| Fase 6 | Reportes y exportación | 2-3 horas |
+| **Total** | | **14-21 horas** |
+
+### 9.11 Decisiones finales confirmadas (08/06/2026)
+
+**Disciplinas del proyecto EPC (9 en total):**
+
+1. ✅ Inicio de Contrato
+2. ✅ Estudios de Ingeniería
+3. ✅ Ingeniería de Detalle
+4. ✅ Suministro
+5. ✅ Construcción Civil
+6. ✅ Mecánica
+7. ✅ Eléctrica
+8. ✅ Pruebas
+9. ✅ Cierre de Contrato
+
+**Enum creado:** `RenergeIA.Core/Enums/Disciplina.cs`
+
+**Campos agregados:**
+- `ActividadWBS.Disciplina` (tipo: `Disciplina`)
+- `RegistroClima.InformeDiarioId` (FK opcional a InformeDiario)
+
+**Migración aplicada:** `20260608161501_AgregarDisciplinaYRelacionClima`
+
+**Plantilla WBS:** 110 actividades clasificadas por disciplina
+
+**Curvas S a generar:**
+- 1 Curva S General (todo el proyecto)
+- 9 Curvas S por Disciplina (análisis individual)
+
+### 9.12 Próximos pasos de implementación
+
+- [x] Análisis funcional completado
+- [x] Diagnóstico de estado actual
+- [x] Identificación de campos faltantes
+- [x] Diseño de flujo funcional
+- [x] Definición de reglas de negocio
+- [x] Propuesta de cálculos automáticos
+- [x] Información del Excel obtenida y analizada
+- [x] Modelo de datos confirmado con 9 disciplinas
+- [x] Disciplina agregada a ActividadWBS
+- [x] Plantilla de 110 actividades clasificada
+- [ ] ⏳ **EN PROGRESO:** Implementación del módulo Informe Diario
+
+### Checklist Etapa 9 (en implementación)
+
+- [x] Análisis y diseño arquitectónico documentado
+- [x] Flujo funcional definido
+- [x] Campos faltantes identificados
+- [x] Decisiones arquitectónicas evaluadas
+- [x] Información del Excel obtenida
+- [x] Modelo de datos aprobado
+- [x] Enum Disciplina creado (9 valores)
+- [x] ActividadWBS actualizado con Disciplina
+- [x] RegistroClima relacionado con InformeDiario
+- [x] Migración de disciplinas aplicada
+- [ ] ⏳ **Implementación en progreso...**
+
+### 9.13 Implementación del modelo de datos completada (08/06/2026)
+
+**Enums creados:**
+- `EstadoInforme` → Borrador, EnRevision, Aprobado, Rechazado, Anulado
+- `EstadoAvance` → AlDia, Atrasado, Adelantado
+
+**Entidades actualizadas:**
+- `InformeDiario` → +7 campos (Estado, Version, InformeDiarioAnteriorId, RevisadoPor, FechaRevision, MotivoRechazo, ComentariosGenerales)
+- `RegistroAvanceDiario` → +8 campos (CantidadEjecutadaDia, AvanceEsperado, AvanceAcumulado, Desviacion, DiasAtraso, Estado, HorasAfectadasClima, Novedades)
+
+**Entidades M:N creadas:**
+- `RegistroAvancePersonal` → Vincula personal que trabajó en la actividad
+- `RegistroAvanceEquipo` → Vincula equipos utilizados
+- `RegistroAvanceRestriccion` → Vincula restricciones que afectaron el avance
+
+**DbContext configurado:**
+- Tipos decimal con precisión/escala especificados
+- Relación auto-referenciada en InformeDiario (versionado)
+- Relaciones M:N con DeleteBehavior.Restrict para evitar cascadas
+
+**Migración aplicada:**
+- `20260608171109_ModuloInformeDiario`
+- 3 tablas nuevas creadas
+- Índices y foreign keys configurados correctamente
+
+### 9.14 Implementación completa del módulo UI y servicios (08/06/2026)
+
+**Servicio de cálculos creado: `InformeDiarioService.cs`**
+
+Métodos implementados (12 en total):
+1. `CalcularAvanceEsperado()` - Calcula el avance que debería tener según la programación inicial
+2. `CalcularAvanceAcumuladoAsync()` - Suma todos los registros de avance hasta una fecha
+3. `CalcularDesviacion()` - Diferencia entre avance real y esperado (negativo = atraso)
+4. `CalcularSPI()` - Schedule Performance Index (< 1 = atraso, = 1 = a tiempo, > 1 = adelanto)
+5. `DeterminarEstadoAvance()` - Clasifica como AlDia/Atrasado/Adelantado según desviación
+6. `CalcularDiasAtraso()` - Estima días de atraso basado en el ritmo de avance
+7. `ActualizarCalculosRegistroAvanceAsync()` - Actualiza TODOS los cálculos automáticamente
+8. `ObtenerResumenPorDisciplinaAsync()` - Genera resumen de avance por cada disciplina
+9. `GenerarCurvaSAsync()` - Genera datos para gráfica de Curva S (general o por disciplina)
+
+**Características del servicio:**
+- Cálculos completamente automáticos al guardar
+- Fórmulas basadas en metodología de gestión de proyectos (SPI, desviación, etc.)
+- Soporte para análisis por disciplina (9 disciplinas configuradas)
+- Preparado para generar Curva S (falta solo la UI de gráfica)
+
+**Páginas Blazor creadas (3 páginas):**
+
+1. **ListaInformesDiarios.razor** (`/informes-diarios/{ProyectoId}`)
+   - Lista paginada de todos los informes del proyecto
+   - Filtrado por estado (Borrador, En Revisión, Aprobado, etc.)
+   - Estados visuales con badges de colores
+   - Acciones: Ver, Editar (solo borradores), Eliminar (solo borradores)
+   - Confirmación antes de eliminar con advertencia
+   - Eliminación en cascada de registros de avance asociados
+
+2. **CrearInformeDiario.razor** (`/informes-diarios/{ProyectoId}/crear` y `/editar/{InformeId}`)
+   - Formulario completo para crear/editar informes
+   - Información general: fecha, certificado, personal, resumen, observaciones
+   - Registro dinámico de avances por actividad
+   - Agregar/eliminar actividades en tiempo real
+   - Dropdown con todas las actividades del WBS
+   - Validación de certificado único (no permite duplicados)
+   - Cálculos automáticos al guardar (llama a InformeDiarioService)
+   - Mensajes de error claros y descriptivos
+
+3. **DetalleInformeDiario.razor** (`/informes-diarios/{ProyectoId}/{InformeId}`)
+   - Vista completa y detallada del informe
+   - Resumen ejecutivo por disciplina (9 disciplinas con iconos)
+   - Tabla completa de avances con todos los cálculos
+   - Visualización de desviaciones con badges de colores
+   - Barras de progreso por disciplina
+   - Indicadores de SPI (Schedule Performance Index)
+   - Estados visuales (Al día en verde, Atrasado en rojo, Adelantado en azul)
+
+**Mejoras de diseño y UX implementadas:**
+
+1. **Nombres de disciplinas legibles:**
+   - Método helper `ObtenerNombreDisciplina()` convierte enums a español
+   - "InicioContrato" → "Inicio de Contrato"
+   - "EstudiosIngenieria" → "Estudios de Ingeniería"
+   - "ConstruccionCivil" → "Construcción Civil"
+   - Aplicado en todas las páginas del módulo
+
+2. **Iconos por disciplina:**
+   - Método helper `ObtenerIconoDisciplina()` asigna emojis
+   - 📝 Inicio de Contrato
+   - 🔬 Estudios de Ingeniería
+   - 📐 Ingeniería de Detalle
+   - 📦 Suministro
+   - 🏗️ Construcción Civil
+   - ⚙️ Mecánica
+   - ⚡ Eléctrica
+   - 🔍 Pruebas
+   - ✅ Cierre de Contrato
+
+3. **Resumen por disciplina mejorado:**
+   - Cards visuales con iconos y nombres
+   - Barras de progreso con colores (verde = bien, rojo = atrasado)
+   - Indicadores de SPI destacados
+   - Layout limpio y profesional
+
+**Validaciones implementadas:**
+
+1. **Certificado único por proyecto:**
+   - Validación en backend antes de guardar
+   - Verifica que no exista otro informe con el mismo certificado
+   - Mensaje de error claro: "Ya existe un informe con el número de certificado..."
+   - Permite editar certificados sin conflicto (excluye el propio informe en edición)
+
+2. **Seguridad por estados:**
+   - Solo informes en estado "Borrador" pueden editarse
+   - Solo informes en estado "Borrador" pueden eliminarse
+   - Informes "En Revisión", "Aprobado", "Rechazado" o "Anulado" son de solo lectura
+   - Protección de integridad de registros oficiales
+
+3. **Eliminación segura:**
+   - Confirmación obligatoria antes de eliminar
+   - Muestra datos del informe a eliminar (certificado, fecha)
+   - Advertencia de que la acción no se puede deshacer
+   - Eliminación en cascada de registros asociados
+
+**Integración con el sistema:**
+
+- Servicio registrado en `Program.cs` con DI (Dependency Injection)
+- Módulo activado en `DetalleProyecto.razor` (card "📋 Informe Diario")
+- Navegación integrada con el resto del sistema
+- Breadcrumbs y botones de "Volver" en todas las páginas
+- Consistencia visual con el diseño existente (Bootstrap)
+
+**Archivos creados/modificados:**
+
+Archivos nuevos:
+- `RenergeIA.Web/Services/InformeDiarioService.cs` (servicio de cálculos)
+- `RenergeIA.Web/Components/Pages/InformeDiario/ListaInformesDiarios.razor`
+- `RenergeIA.Web/Components/Pages/InformeDiario/CrearInformeDiario.razor`
+- `RenergeIA.Web/Components/Pages/InformeDiario/DetalleInformeDiario.razor`
+
+Archivos modificados:
+- `RenergeIA.Web/Program.cs` (registro del servicio)
+- `RenergeIA.Web/Components/Pages/Proyectos/DetalleProyecto.razor` (activación del módulo)
+
+**Estado de la Etapa 9:**
+
+- [x] Análisis funcional completado
+- [x] Modelo de datos diseñado e implementado
+- [x] Migraciones creadas y aplicadas
+- [x] Servicio de cálculos implementado (12 métodos)
+- [x] Interfaz de usuario completa (3 páginas)
+- [x] Validaciones de negocio implementadas
+- [x] Mejoras de diseño y UX aplicadas
+- [x] Integración con el sistema completada
+- [x] **Módulo funcional y probado**
+- [ ] Curva S visual (método existe, falta gráfica)
+- [ ] Dashboard de proyecto (KPIs)
+- [ ] Exportación a PDF
+- [ ] Vincular personal/equipos/restricciones (UI pendiente, tablas listas)
+
+**Próximos pasos opcionales:**
+
+1. Implementar gráfica de Curva S (método ya existe en el servicio)
+2. Dashboard del proyecto con KPIs principales
+3. Exportación de informes a PDF
+4. UI para vincular personal específico a cada avance (tabla M:N ya existe)
+5. UI para vincular equipos utilizados (tabla M:N ya existe)
+6. UI para vincular restricciones (tabla M:N ya existe)
+7. Sistema de alertas automáticas por atrasos
 
 ---
 

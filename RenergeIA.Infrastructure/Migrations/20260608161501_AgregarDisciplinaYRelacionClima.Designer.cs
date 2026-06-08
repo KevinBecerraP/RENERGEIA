@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RenergeIA.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using RenergeIA.Infrastructure.Data;
 namespace RenergeIA.Infrastructure.Migrations
 {
     [DbContext(typeof(RenergeIADbContext))]
-    partial class RenergeIADbContextModelSnapshot : ModelSnapshot
+    [Migration("20260608161501_AgregarDisciplinaYRelacionClima")]
+    partial class AgregarDisciplinaYRelacionClima
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -589,18 +592,12 @@ namespace RenergeIA.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ComentariosGenerales")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("CreadoPor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("Enviado")
                         .HasColumnType("bit");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("datetime2");
@@ -610,15 +607,6 @@ namespace RenergeIA.Infrastructure.Migrations
 
                     b.Property<DateTime?>("FechaModificacion")
                         .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaRevision")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("InformeDiarioAnteriorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("MotivoRechazo")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NumeroCertificado")
                         .IsRequired()
@@ -638,15 +626,7 @@ namespace RenergeIA.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RevisadoPor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("InformeDiarioAnteriorId");
 
                     b.HasIndex("ProyectoId");
 
@@ -958,24 +938,6 @@ namespace RenergeIA.Infrastructure.Migrations
                     b.Property<int>("ActividadWBSId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("AvanceAcumulado")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<decimal>("AvanceEsperado")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<decimal>("CantidadEjecutadaDia")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<decimal>("Desviacion")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<int>("DiasAtraso")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("datetime2");
 
@@ -985,17 +947,11 @@ namespace RenergeIA.Infrastructure.Migrations
                     b.Property<DateTime?>("FechaModificacion")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal?>("HorasAfectadasClima")
-                        .HasColumnType("decimal(6,2)");
-
                     b.Property<decimal>("HorasTrabajadas")
                         .HasColumnType("decimal(6,2)");
 
                     b.Property<int>("InformeDiarioId")
                         .HasColumnType("int");
-
-                    b.Property<string>("Novedades")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Observaciones")
                         .IsRequired()
@@ -1023,99 +979,6 @@ namespace RenergeIA.Infrastructure.Migrations
                     b.HasIndex("ProyectoId");
 
                     b.ToTable("RegistrosAvanceDiario");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvanceEquipo", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("EquipoId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaModificacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("HorasUtilizadas")
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<int>("RegistroAvanceDiarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EquipoId");
-
-                    b.HasIndex("RegistroAvanceDiarioId");
-
-                    b.ToTable("RegistrosAvanceEquipo");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvancePersonal", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaModificacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("HorasTrabajadas")
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<int>("PersonalProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RegistroAvanceDiarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PersonalProyectoId");
-
-                    b.HasIndex("RegistroAvanceDiarioId");
-
-                    b.ToTable("RegistrosAvancePersonal");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvanceRestriccion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaModificacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("RegistroAvanceDiarioId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RestriccionId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RegistroAvanceDiarioId");
-
-                    b.HasIndex("RestriccionId");
-
-                    b.ToTable("RegistrosAvanceRestriccion");
                 });
 
             modelBuilder.Entity("RenergeIA.Core.Entities.RegistroClima", b =>
@@ -1556,18 +1419,11 @@ namespace RenergeIA.Infrastructure.Migrations
 
             modelBuilder.Entity("RenergeIA.Core.Entities.InformeDiario", b =>
                 {
-                    b.HasOne("RenergeIA.Core.Entities.InformeDiario", "InformeDiarioAnterior")
-                        .WithMany()
-                        .HasForeignKey("InformeDiarioAnteriorId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("RenergeIA.Core.Entities.Proyecto", "Proyecto")
                         .WithMany("InformesDiarios")
                         .HasForeignKey("ProyectoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("InformeDiarioAnterior");
 
                     b.Navigation("Proyecto");
                 });
@@ -1647,63 +1503,6 @@ namespace RenergeIA.Infrastructure.Migrations
                     b.Navigation("InformeDiario");
 
                     b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvanceEquipo", b =>
-                {
-                    b.HasOne("RenergeIA.Core.Entities.Equipo", "Equipo")
-                        .WithMany()
-                        .HasForeignKey("EquipoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RenergeIA.Core.Entities.RegistroAvanceDiario", "RegistroAvanceDiario")
-                        .WithMany()
-                        .HasForeignKey("RegistroAvanceDiarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Equipo");
-
-                    b.Navigation("RegistroAvanceDiario");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvancePersonal", b =>
-                {
-                    b.HasOne("RenergeIA.Core.Entities.PersonalProyecto", "PersonalProyecto")
-                        .WithMany()
-                        .HasForeignKey("PersonalProyectoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RenergeIA.Core.Entities.RegistroAvanceDiario", "RegistroAvanceDiario")
-                        .WithMany()
-                        .HasForeignKey("RegistroAvanceDiarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("PersonalProyecto");
-
-                    b.Navigation("RegistroAvanceDiario");
-                });
-
-            modelBuilder.Entity("RenergeIA.Core.Entities.RegistroAvanceRestriccion", b =>
-                {
-                    b.HasOne("RenergeIA.Core.Entities.RegistroAvanceDiario", "RegistroAvanceDiario")
-                        .WithMany()
-                        .HasForeignKey("RegistroAvanceDiarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("RenergeIA.Core.Entities.Restriccion", "Restriccion")
-                        .WithMany()
-                        .HasForeignKey("RestriccionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("RegistroAvanceDiario");
-
-                    b.Navigation("Restriccion");
                 });
 
             modelBuilder.Entity("RenergeIA.Core.Entities.RegistroClima", b =>

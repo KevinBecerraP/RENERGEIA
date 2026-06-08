@@ -5,7 +5,23 @@ Desarrollada con Blazor Server + ASP.NET Core + SQL Server + Entity Framework Co
 
 ---
 
-## Estado actual: Etapa 1 COMPLETADA ✓
+## Estado actual: Etapas 1-9 COMPLETADAS ✅
+
+**Módulos funcionando:**
+- ✅ Login y autenticación (13 roles configurados)
+- ✅ Proyectos (CRUD completo)
+- ✅ Personal del Proyecto (CRUD completo con filtros)
+- ✅ Equipos y Maquinaria (CRUD completo)
+- ✅ WBS / Actividades (árbol jerárquico + plantilla 110 actividades EPC con 9 disciplinas)
+- ✅ Informe Diario / Avance Diario (registro de avances, cálculos automáticos, resumen por disciplina)
+
+**Funcionalidades del módulo Informe Diario:**
+- 📊 Registro de avance diario por actividad
+- 🔢 Cálculos automáticos (SPI, desviación, días de atraso)
+- 📈 Resumen ejecutivo por disciplina (9 disciplinas)
+- 🔒 Validación de certificados únicos
+- 🗑️ Gestión de estados (Borrador, En Revisión, Aprobado)
+- ✏️ Edición/eliminación solo en estado Borrador
 
 ---
 
@@ -84,44 +100,84 @@ PROYECTO AGENTE/
 
 ---
 
-## Próxima etapa: Etapa 2 — Modelo de Datos
+## Próxima etapa: Etapa 9 — Módulo Informe Diario
 
-Crear las entidades C# en `RenergeIA.Core/Entities/` según la documentación.
+**Objetivo:** Implementar el sistema de captura y seguimiento de avances diarios de actividades, con cálculos automáticos de desviaciones, alertas y generación de Curva S.
 
-Entidades a crear (secciones 19 y 20 del PDF):
+**Pendiente antes de implementar:**
+- Análisis de las hojas del Excel del Informe Diario actual
+- Confirmación del modelo de datos (23 campos nuevos + 3 tablas M:N identificados)
+- Diseño de pantallas y flujos de usuario
 
-```
-Proyecto, Usuario, ActividadWBS, RegistroAvanceDiario, InformeDiario,
-Fotografia, Documento, VersionDocumento, Partida, CostoReal,
-NoConformidad, AccionCorrectiva, Restriccion, PersonalProyecto,
-DocumentoPersona, Equipo, RegistroHorometro, Mantenimiento,
-Alerta, RegistroClima
-```
-
-Luego: instalar paquetes NuGet (EF Core, Identity, SQL Server provider) y crear el `DbContext`.
+**Documentación:**
+- Especificaciones: `prom informe diario.txt`
+- Análisis arquitectónico: `GUIA_DESARROLLO.md` > Etapa 9
 
 ---
 
-## Checklist Etapa 1
+## Checklist de Progreso
 
-- [x] .NET SDK instalado y verificado (`dotnet --version`)
-- [x] SQL Server 2025 Developer Edition instalado
-- [x] SSMS instalado y conectado a `localhost`
-- [x] Git instalado y configurado (user: Kevin Becerra)
-- [x] VS Code instalado
-- [x] Solución `RenergeIA.slnx` creada
-- [x] Proyecto `RenergeIA.Web` (Blazor) creado con .NET 10
-- [x] Proyecto `RenergeIA.Core` (Class Library) creado con .NET 10
-- [x] Proyecto `RenergeIA.Infrastructure` (Class Library) creado con .NET 10
-- [x] Proyectos agregados a la solución
-- [x] Referencias entre proyectos configuradas
-- [x] Git inicializado (`git init`)
-- [x] `dotnet build` — compilación exitosa (3 proyectos en 5.8s)
-- [x] `dotnet run` — aplicación corriendo en `http://localhost:5288`
+### ✅ Etapa 1: Preparación del Entorno
+- [x] .NET SDK 10, SQL Server, SSMS, Git, VS Code instalados
+- [x] Solución y 3 proyectos creados (Web, Core, Infrastructure)
+- [x] Referencias configuradas y compilación exitosa
+
+### ✅ Etapa 2: Modelo de Datos
+- [x] 20 entidades creadas en `RenergeIA.Core/Entities`
+- [x] 12 enums definidos en `RenergeIA.Core/Enums`
+- [x] DbContext configurado con Entity Framework Core
+- [x] Migración `InitialCreate` aplicada (19 tablas creadas)
+
+### ✅ Etapa 3: Identity y Roles
+- [x] ASP.NET Core Identity configurado
+- [x] 13 roles definidos (Administrador, Gerente, Residente, etc.)
+- [x] Usuario admin creado: `admin@renergeia.com` / `Admin123!`
+- [x] Migración `AddIdentity` aplicada (7 tablas Identity)
+
+### ✅ Etapa 4: Login UI
+- [x] Página de login funcional (`/login`)
+- [x] Logout (`/logout`)
+- [x] Protección de rutas con `[Authorize]`
+- [x] Redirección automática si no autenticado
+
+### ✅ Etapa 5: Módulo Proyectos
+- [x] CRUD completo (Listar, Crear, Ver, Editar, Eliminar)
+- [x] Badge de colores por estado
+- [x] Validaciones con DataAnnotations
+
+### ✅ Etapa 6: Módulo Personal
+- [x] CRUD completo vinculado a proyectos
+- [x] Filtros por tipo, estado y búsqueda
+- [x] Toggle activo/inactivo
+
+### ✅ Etapa 7: Módulo Equipos
+- [x] CRUD completo de maquinaria y equipos
+- [x] 6 tipos de equipo con badges de color
+- [x] Filtros y búsqueda
+
+### ✅ Etapa 8: Módulo WBS / Actividades
+- [x] Árbol jerárquico de actividades
+- [x] Plantilla con 110 actividades tipo EPC fotovoltaico
+- [x] Toggle activo/inactivo por actividad
+- [x] Migración `AddActivoWBS` aplicada
+
+### 📋 Etapa 9: Informe Diario (En Análisis)
+- [x] Análisis arquitectónico completado
+- [x] 23 campos nuevos identificados
+- [x] Flujo funcional documentado
+- [ ] Información del Excel pendiente
+- [ ] Implementación pendiente
 
 ---
 
-## Documentación fuente
+## Documentación
 
-Archivo: `RenergeIA_Documentacion_v1.0.pdf` (33 páginas, Junio 2026)  
-Toda decisión técnica y funcional debe respetar este documento.
+| Archivo | Descripción |
+|---|---|
+| `GUIA_DESARROLLO.md` | Documentación técnica completa de todas las etapas (1,306 líneas) |
+| `INFORME_REVISION_COMPLETA.md` | Revisión exhaustiva del estado del proyecto (generado 08/06/2026) |
+| `prom informe diario.txt` | Especificaciones del módulo Informe Diario (261 líneas) |
+| `README.md` | Este archivo — guía rápida y estado actual |
+
+**Documentación fuente original:**  
+`RenergeIA_Documentacion_v1.0.pdf` (33 páginas, Junio 2026) — Especificación funcional completa del sistema.

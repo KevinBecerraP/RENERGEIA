@@ -1,0 +1,336 @@
+@page "/informes-diarios/{ProyectoId:int}/{InformeId:int}"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@inject RenergeIA.Web.Services.InformeDiarioService InformeService
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Detalle Informe Diario - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📋 Detalle del Informe Diario</h2>
+            @if (_proyecto is not null && _informe is not null)
+            {
+                <p class="text-muted mb-0">
+                    Proyecto: <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong> |
+                    Fecha: <strong>@_informe.Fecha.ToString("dd/MM/yyyy")</strong>
+                </p>
+            }
+        </div>
+        <div class="col-auto">
+            @if (_informe?.Estado == EstadoInforme.Borrador)
+            {
+                <a href="/informes-diarios/@ProyectoId/editar/@InformeId" class="btn btn-primary">
+                    ✏️ Editar
+                </a>
+            }
+            <a href="/informes-diarios/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver a la lista
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border"></div>
+            <p class="mt-2 text-muted">Cargando detalle...</p>
+        </div>
+    }
+    else if (_informe is null)
+    {
+        <div class="alert alert-warning">
+            <strong>⚠️ Informe no encontrado</strong>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- Información General -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📋 Información General</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Nro. Certificado</label>
+                                <p class="mb-0"><strong>@_informe.NumeroCertificado</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Estado</label>
+                                <p class="mb-0">
+                                    <span class="badge @ObtenerClaseEstado(_informe.Estado)">
+                                        @ObtenerTextoEstado(_informe.Estado)
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Personal Total</label>
+                                <p class="mb-0"><strong>@_informe.PersonalTotal</strong> personas</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Versión</label>
+                                <p class="mb-0">v@_informe.Version</p>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small">Resumen de Actividades</label>
+                                <p class="mb-0">@_informe.ResumenActividades</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(_informe.Observaciones))
+                            {
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small">Observaciones</label>
+                                    <p class="mb-0">@_informe.Observaciones</p>
+                                </div>
+                            }
+                            <div class="col-md-12">
+                                <hr class="my-2" />
+                                <p class="text-muted small mb-0">
+                                    Creado por: <strong>@_informe.CreadoPor</strong> el @_informe.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen por Disciplina -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📊 Resumen por Disciplina</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (_resumenDisciplinas.Any())
+                        {
+                            @foreach (var resumen in _resumenDisciplinas)
+                            {
+                                <div class="mb-3 pb-3 border-bottom">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="me-2" style="font-size: 1.2rem;">@ObtenerIconoDisciplina(resumen.Disciplina)</span>
+                                        <span class="fw-bold small">@ObtenerNombreDisciplina(resumen.Disciplina)</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="small text-muted">Avance Real</span>
+                                        <span class="badge @(resumen.Desviacion >= 0 ? "bg-success" : "bg-danger")">
+                                            @resumen.AvanceReal.ToString("F2")%
+                                        </span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar @(resumen.Desviacion >= 0 ? "bg-success" : "bg-danger")"
+                                             style="width: @resumen.AvanceReal%"
+                                             role="progressbar"
+                                             aria-valuenow="@resumen.AvanceReal"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <span class="small text-muted">Esperado: @resumen.AvanceEsperado.ToString("F2")%</span>
+                                        <span class="small text-muted">SPI: <strong>@resumen.SPI.ToString("F2")</strong></span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted small mb-0">No hay datos disponibles</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registros de Avance -->
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📊 Avances Registrados</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!_registrosAvance.Any())
+                        {
+                            <div class="alert alert-info">
+                                <strong>ℹ️ No hay registros de avance</strong>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Actividad</th>
+                                            <th>Disciplina</th>
+                                            <th class="text-end">Avance Día</th>
+                                            <th class="text-end">Avance Acum.</th>
+                                            <th class="text-end">Avance Esp.</th>
+                                            <th class="text-end">Desviación</th>
+                                            <th>Estado</th>
+                                            <th class="text-end">Horas</th>
+                                            <th class="text-end">Personal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var registro in _registrosAvance)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@registro.ActividadWBS.CodigoWBS</strong><br />
+                                                    <small class="text-muted">@registro.ActividadWBS.Nombre</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-secondary" style="font-size: 0.75rem;">
+                                                        @ObtenerIconoDisciplina(registro.ActividadWBS.Disciplina) @ObtenerNombreDisciplina(registro.ActividadWBS.Disciplina)
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">@registro.PorcentajeAvance.ToString("F2")%</td>
+                                                <td class="text-end"><strong>@registro.AvanceAcumulado.ToString("F2")%</strong></td>
+                                                <td class="text-end text-muted">@registro.AvanceEsperado.ToString("F2")%</td>
+                                                <td class="text-end">
+                                                    <span class="badge @(registro.Desviacion >= 0 ? "bg-success" : "bg-danger")">
+                                                        @registro.Desviacion.ToString("+0.00;-0.00;0.00")%
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @ObtenerClaseEstadoAvance(registro.Estado)">
+                                                        @ObtenerTextoEstadoAvance(registro.Estado)
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">@registro.HorasTrabajadas.ToString("F1")h</td>
+                                                <td class="text-end">@registro.PersonalEnSitio</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-3 text-muted">
+                                <small>Total de actividades registradas: <strong>@_registrosAvance.Count</strong></small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int InformeId { get; set; }
+
+    private Proyecto? _proyecto;
+    private InformeDiario? _informe;
+    private List<RegistroAvanceDiario> _registrosAvance = new();
+    private List<RenergeIA.Web.Services.ResumenDisciplina> _resumenDisciplinas = new();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                Nav.NavigateTo("/proyectos");
+                return;
+            }
+
+            _informe = await Db.InformesDiarios
+                .Include(i => i.RegistrosAvance)
+                    .ThenInclude(r => r.ActividadWBS)
+                .FirstOrDefaultAsync(i => i.Id == InformeId && i.ProyectoId == ProyectoId);
+
+            if (_informe is not null)
+            {
+                _registrosAvance = _informe.RegistrosAvance.ToList();
+                _resumenDisciplinas = await InformeService.ObtenerResumenPorDisciplinaAsync(ProyectoId, _informe.Fecha);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar el informe: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private string ObtenerClaseEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "bg-secondary",
+        EstadoInforme.EnRevision => "bg-warning",
+        EstadoInforme.Aprobado => "bg-success",
+        EstadoInforme.Rechazado => "bg-danger",
+        EstadoInforme.Anulado => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝 Borrador",
+        EstadoInforme.EnRevision => "⏳ En Revisión",
+        EstadoInforme.Aprobado => "✅ Aprobado",
+        EstadoInforme.Rechazado => "❌ Rechazado",
+        EstadoInforme.Anulado => "🚫 Anulado",
+        _ => "Desconocido"
+    };
+
+    private string ObtenerClaseEstadoAvance(EstadoAvance estado) => estado switch
+    {
+        EstadoAvance.AlDia => "bg-success",
+        EstadoAvance.Atrasado => "bg-danger",
+        EstadoAvance.Adelantado => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private string ObtenerTextoEstadoAvance(EstadoAvance estado) => estado switch
+    {
+        EstadoAvance.AlDia => "✅ Al día",
+        EstadoAvance.Atrasado => "❌ Atrasado",
+        EstadoAvance.Adelantado => "⚡ Adelantado",
+        _ => "Desconocido"
+    };
+
+    private string ObtenerNombreDisciplina(Disciplina disciplina) => disciplina switch
+    {
+        Disciplina.InicioContrato => "Inicio de Contrato",
+        Disciplina.EstudiosIngenieria => "Estudios de Ingeniería",
+        Disciplina.IngenieriaDetalle => "Ingeniería de Detalle",
+        Disciplina.Suministro => "Suministro",
+        Disciplina.ConstruccionCivil => "Construcción Civil",
+        Disciplina.Mecanica => "Mecánica",
+        Disciplina.Electrica => "Eléctrica",
+        Disciplina.Pruebas => "Pruebas",
+        Disciplina.CierreContrato => "Cierre de Contrato",
+        _ => disciplina.ToString()
+    };
+
+    private string ObtenerIconoDisciplina(Disciplina disciplina) => disciplina switch
+    {
+        Disciplina.InicioContrato => "📝",
+        Disciplina.EstudiosIngenieria => "🔬",
+        Disciplina.IngenieriaDetalle => "📐",
+        Disciplina.Suministro => "📦",
+        Disciplina.ConstruccionCivil => "🏗️",
+        Disciplina.Mecanica => "⚙️",
+        Disciplina.Electrica => "⚡",
+        Disciplina.Pruebas => "🔍",
+        Disciplina.CierreContrato => "✅",
+        _ => "📋"
+    };
+}

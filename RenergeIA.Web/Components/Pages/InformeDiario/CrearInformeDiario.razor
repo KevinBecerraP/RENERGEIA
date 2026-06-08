@@ -1,0 +1,331 @@
+@page "/informes-diarios/{ProyectoId:int}/crear"
+@page "/informes-diarios/{ProyectoId:int}/editar/{InformeId:int}"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@inject RenergeIA.Web.Services.InformeDiarioService InformeService
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>@(_esEdicion ? "Editar" : "Crear") Informe Diario - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>@(_esEdicion ? "✏️ Editar" : "➕ Crear") Informe Diario</h2>
+            @if (_proyecto is not null)
+            {
+                <p class="text-muted mb-0">Proyecto: <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong></p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/informes-diarios/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver a la lista
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @_error
+            <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border"></div>
+            <p class="mt-2 text-muted">Cargando...</p>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="_informe" OnValidSubmit="GuardarAsync" FormName="FormInforme">
+            <div class="row g-4">
+                <!-- Información General -->
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">📋 Información General</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Fecha del Informe *</label>
+                                    <InputDate @bind-Value="_informe.Fecha" class="form-control" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Nro. Certificado *</label>
+                                    <InputText @bind-Value="_informe.NumeroCertificado" class="form-control" placeholder="Ej: CERT-2026-001" required />
+                                    <small class="form-text text-muted">Debe ser único en el proyecto</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Personal Total</label>
+                                    <InputNumber @bind-Value="_informe.PersonalTotal" class="form-control" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Estado</label>
+                                    <InputSelect @bind-Value="_informe.Estado" class="form-select">
+                                        @foreach (var estado in Enum.GetValues<EstadoInforme>())
+                                        {
+                                            <option value="@estado">@ObtenerTextoEstado(estado)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Resumen de Actividades</label>
+                                    <InputTextArea @bind-Value="_informe.ResumenActividades" class="form-control" rows="3" placeholder="Breve resumen de las actividades del día..." />
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Observaciones Generales</label>
+                                    <InputTextArea @bind-Value="_informe.Observaciones" class="form-control" rows="2" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registros de Avance -->
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">📊 Avances del Día</h5>
+                            <button type="button" class="btn btn-sm btn-success" @onclick="AgregarRegistroAvance">
+                                ➕ Agregar Actividad
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            @if (!_registrosAvance.Any())
+                            {
+                                <div class="alert alert-info">
+                                    <strong>ℹ️ No hay registros de avance</strong>
+                                    <p class="mb-0">Haz clic en "Agregar Actividad" para registrar el avance de una actividad del día.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width:40%">Actividad</th>
+                                                <th style="width:15%">Avance %</th>
+                                                <th style="width:15%">Horas</th>
+                                                <th style="width:15%">Personal</th>
+                                                <th style="width:15%" class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var (registro, index) in _registrosAvance.Select((r, i) => (r, i)))
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <select @bind="registro.ActividadWBSId" class="form-select form-select-sm">
+                                                            <option value="0">-- Seleccionar actividad --</option>
+                                                            @foreach (var act in _actividadesDisponibles)
+                                                            {
+                                                                <option value="@act.Id">@act.CodigoWBS - @act.Nombre</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" @bind="registro.PorcentajeAvance" class="form-control form-control-sm" min="0" max="100" step="0.01" />
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" @bind="registro.HorasTrabajadas" class="form-control form-control-sm" min="0" step="0.5" />
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" @bind="registro.PersonalEnSitio" class="form-control form-control-sm" min="0" />
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => EliminarRegistroAvance(index)">
+                                                            🗑️
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="col-md-12">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@_guardando">
+                            @if (_guardando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            💾 Guardar Informe
+                        </button>
+                        <a href="/informes-diarios/@ProyectoId" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int? InformeId { get; set; }
+
+    private Proyecto? _proyecto;
+    private InformeDiario _informe = new();
+    private List<RegistroAvanceDiario> _registrosAvance = new();
+    private List<ActividadWBS> _actividadesDisponibles = new();
+    private bool _cargando = true;
+    private bool _guardando = false;
+    private bool _esEdicion => InformeId.HasValue;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                Nav.NavigateTo("/proyectos");
+                return;
+            }
+
+            _actividadesDisponibles = await Db.ActividadesWBS
+                .Where(a => a.ProyectoId == ProyectoId && a.Activo)
+                .OrderBy(a => a.CodigoWBS)
+                .ToListAsync();
+
+            if (_esEdicion && InformeId.HasValue)
+            {
+                var informe = await Db.InformesDiarios
+                    .Include(i => i.RegistrosAvance)
+                    .FirstOrDefaultAsync(i => i.Id == InformeId.Value);
+
+                if (informe is null)
+                {
+                    Nav.NavigateTo($"/informes-diarios/{ProyectoId}");
+                    return;
+                }
+
+                _informe = informe;
+                _registrosAvance = informe.RegistrosAvance.ToList();
+            }
+            else
+            {
+                _informe = new InformeDiario
+                {
+                    ProyectoId = ProyectoId,
+                    Fecha = DateTime.Today,
+                    Estado = EstadoInforme.Borrador,
+                    Version = 1,
+                    CreadoPor = "Usuario Actual" // TODO: Obtener del contexto de Identity
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar el formulario: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private void AgregarRegistroAvance()
+    {
+        _registrosAvance.Add(new RegistroAvanceDiario
+        {
+            ProyectoId = ProyectoId,
+            Fecha = _informe.Fecha,
+            ReportadoPor = _informe.CreadoPor
+        });
+    }
+
+    private void EliminarRegistroAvance(int index)
+    {
+        if (index >= 0 && index < _registrosAvance.Count)
+            _registrosAvance.RemoveAt(index);
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            // Validar que el número de certificado sea único en el proyecto
+            var certificadoDuplicado = await Db.InformesDiarios
+                .AnyAsync(i => i.ProyectoId == ProyectoId
+                    && i.NumeroCertificado == _informe.NumeroCertificado
+                    && i.Id != _informe.Id);
+
+            if (certificadoDuplicado)
+            {
+                _error = $"Ya existe un informe con el número de certificado '{_informe.NumeroCertificado}' en este proyecto. Por favor, usa un número diferente.";
+                _guardando = false;
+                return;
+            }
+
+            if (_esEdicion)
+            {
+                Db.InformesDiarios.Update(_informe);
+            }
+            else
+            {
+                _informe.FechaCreacion = DateTime.UtcNow;
+                Db.InformesDiarios.Add(_informe);
+            }
+
+            await Db.SaveChangesAsync();
+
+            // Asociar registros de avance al informe
+            foreach (var registro in _registrosAvance)
+            {
+                registro.InformeDiarioId = _informe.Id;
+                registro.FechaCreacion = DateTime.UtcNow;
+
+                // Calcular campos automáticos
+                await InformeService.ActualizarCalculosRegistroAvanceAsync(registro);
+
+                if (registro.Id == 0)
+                    Db.RegistrosAvanceDiario.Add(registro);
+                else
+                    Db.RegistrosAvanceDiario.Update(registro);
+            }
+
+            await Db.SaveChangesAsync();
+
+            Nav.NavigateTo($"/informes-diarios/{ProyectoId}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝 Borrador",
+        EstadoInforme.EnRevision => "⏳ En Revisión",
+        EstadoInforme.Aprobado => "✅ Aprobado",
+        EstadoInforme.Rechazado => "❌ Rechazado",
+        EstadoInforme.Anulado => "🚫 Anulado",
+        _ => "Desconocido"
+    };
+}

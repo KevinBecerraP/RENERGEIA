@@ -29,6 +29,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/login";
 });
 
+builder.Services.AddScoped<RenergeIA.Web.Services.InformeDiarioService>();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 

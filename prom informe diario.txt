@@ -1,0 +1,261 @@
+Actúa como arquitecto de software senior, desarrollador full stack senior, mentor técnico y líder de proyecto.
+Estamos desarrollando una plataforma llamada RenergeIA en Visual Studio Code.
+IMPORTANTE: Este NO es un proyecto nuevo.
+Ya existe una solución construida en:
+•	Blazor Server.
+•	ASP.NET Core.
+•	SQL Server.
+•	Entity Framework Core.
+•	ASP.NET Identity.
+•	Bootstrap.
+•	Arquitectura modular en 3 capas:
+o	RenergeIA.Web
+o	RenergeIA.Core
+o	RenergeIA.Infrastructure
+Ya están completadas las siguientes etapas:
+•	Entorno de desarrollo.
+•	Modelo de datos base.
+•	EF Core y base de datos.
+•	Identity y roles.
+•	Login.
+•	CRUD de proyectos.
+•	CRUD de personal.
+•	CRUD de equipos.
+•	Módulo WBS / Actividades.
+•	Activar y desactivar actividades WBS.
+Actualmente debemos continuar con la siguiente etapa pendiente:
+Módulo Informe Diario / Avance Diario
+Este módulo debe integrarse sobre lo ya construido, especialmente con:
+•	Proyecto.
+•	ActividadWBS.
+•	InformeDiario.
+•	RegistroAvanceDiario.
+•	PersonalProyecto.
+•	Equipo.
+•	RegistroClima.
+•	Restricción.
+•	Fotografía.
+•	Alerta.
+No debes crear una arquitectura nueva ni reiniciar el proyecto.
+Primero debes revisar la estructura actual del código y proponer los ajustes necesarios sobre las entidades existentes.
+________________________________________
+Contexto funcional
+RenergeIA es una plataforma interna para control de proyectos EPC fotovoltaicos.
+El objetivo es centralizar el control operativo, documental y gerencial del proyecto, reemplazando procesos dispersos en Excel, WhatsApp, correos y archivos independientes.
+La empresa actualmente utiliza una plantilla de Informe Diario en Excel, pero NO queremos replicar el Excel como una página web.
+La plantilla del Informe Diario se entrega únicamente como referencia funcional para entender:
+•	Qué información se captura.
+•	Qué indicadores se calculan.
+•	Qué gráficas se generan.
+•	Qué reportes necesita la empresa.
+•	Cómo se relacionan avances, cronograma, curva S y reportes.
+________________________________________
+Principio principal
+El cronograma / WBS es la fuente maestra.
+El Informe Diario no debe permitir crear actividades nuevas.
+Las actividades del Informe Diario deben provenir exclusivamente del módulo WBS / Actividades.
+Si una actividad está activa en el cronograma, debe aparecer en el Informe Diario.
+Si una actividad está desactivada o marcada como No Aplica, no debe aparecer en el Informe Diario.
+Si se activa nuevamente, debe volver a aparecer.
+________________________________________
+Flujo correcto del sistema
+El flujo funcional debe ser:
+Proyecto
+↓
+Cronograma / WBS
+↓
+Actividades activas
+↓
+Informe Diario
+↓
+Registro de avance por actividad
+↓
+Cálculo de avance acumulado
+↓
+Curva S
+↓
+Indicadores
+↓
+Dashboard
+↓
+Reportes
+↓
+Futura integración WhatsApp
+________________________________________
+Objetivo del módulo Informe Diario
+Construir un módulo que permita registrar diariamente el avance real de las actividades activas del cronograma.
+Para cada fecha, el sistema debe permitir crear un Informe Diario asociado a un proyecto.
+Dentro de ese informe deben cargarse automáticamente las actividades activas según el cronograma.
+Para cada actividad se debe poder registrar:
+•	Cantidad ejecutada del día.
+•	Porcentaje de avance reportado.
+•	Observaciones.
+•	Restricciones.
+•	Personal asociado.
+•	Equipos utilizados.
+•	Fotografías.
+•	Novedades.
+•	Horas afectadas por lluvia o clima.
+•	Responsable que reporta.
+________________________________________
+Cálculo de avance esperado
+El sistema debe calcular automáticamente cuánto debería llevar una actividad según sus fechas planificadas.
+Ejemplo:
+Actividad: Hincado
+Fecha inicio planificada: 01/06/2026
+Fecha fin planificada: 30/06/2026
+Fecha del informe: 15/06/2026
+El sistema debe calcular:
+Avance esperado: 50%
+Si el usuario reporta:
+Avance real: 35%
+El sistema debe mostrar:
+Avance esperado: 50%
+Avance real: 35%
+Desviación: -15%
+Estado: Atrasado
+Alerta: Actividad con retraso frente al cronograma.
+________________________________________
+Cálculos automáticos requeridos
+Por actividad:
+•	Avance programado.
+•	Avance real.
+•	Avance acumulado.
+•	Cantidad pendiente.
+•	Desviación.
+•	Días de atraso.
+•	Estado.
+•	Tendencia.
+Por proyecto:
+•	Avance físico programado.
+•	Avance físico real.
+•	Desviación global.
+•	SPI.
+•	Actividades atrasadas.
+•	Actividades críticas.
+•	Restricciones abiertas.
+•	Productividad diaria.
+•	Productividad semanal.
+•	Impacto climático.
+________________________________________
+Relación con Curva S
+El sistema debe tomar los avances diarios registrados y generar automáticamente:
+•	Curva S programada.
+•	Curva S real.
+•	Diferencia entre programado y ejecutado.
+La curva debe poder verse por:
+•	Proyecto completo.
+•	Disciplina.
+•	WBS.
+•	Frente de trabajo.
+•	Actividad.
+________________________________________
+Dashboard del módulo
+Crear o preparar la lógica para un dashboard con:
+•	Avance programado.
+•	Avance real.
+•	Diferencia.
+•	SPI.
+•	Estado del proyecto.
+•	Actividades atrasadas.
+•	Actividades críticas.
+•	Restricciones abiertas.
+•	Impacto climático.
+•	Productividad diaria.
+•	Tendencia semanal.
+•	Curva S.
+•	Avance por disciplina.
+________________________________________
+Reporte Diario
+El sistema debe generar un reporte diario con:
+•	Información general del proyecto.
+•	Fecha del informe.
+•	Actividades ejecutadas.
+•	Avance programado vs avance real.
+•	Restricciones.
+•	Personal.
+•	Equipos.
+•	Clima.
+•	Fotografías.
+•	Alertas.
+•	Comentarios.
+•	Estado general del proyecto.
+El reporte debe quedar inicialmente como vista web y posteriormente poder exportarse a PDF y Excel.
+________________________________________
+Flujo de validación
+El informe diario debe tener estados:
+•	Borrador.
+•	En revisión.
+•	Aprobado.
+•	Rechazado.
+•	Anulado.
+Reglas:
+•	El residente o responsable registra el informe.
+•	El director de proyecto revisa.
+•	Si aprueba, el informe se bloquea.
+•	Si rechaza, vuelve con observaciones.
+•	Toda modificación debe quedar con trazabilidad.
+•	Un informe aprobado no se edita directamente; debe generar nueva versión o corrección.
+________________________________________
+Alertas automáticas
+El sistema debe generar alertas cuando:
+•	Avance real sea menor al avance programado en más de 5 puntos porcentuales.
+•	Una actividad activa no tenga reporte diario.
+•	Una actividad crítica esté atrasada.
+•	Una restricción crítica esté vencida.
+•	La productividad del día sea inferior a la esperada.
+•	Exista afectación por lluvia.
+•	El avance acumulado supere el 100%.
+•	Se registre una inconsistencia mayor al 30% respecto al día anterior.
+________________________________________
+Preparación para WhatsApp
+Diseñar el módulo pensando en una futura integración con WhatsApp Business API.
+En una fase posterior, el sistema deberá:
+1.	Identificar las actividades activas del día.
+2.	Enviar preguntas automáticas a residentes, jefes de obra o coordinadores.
+3.	Recibir avances por WhatsApp.
+4.	Validar que la actividad exista y esté activa.
+5.	Actualizar el Informe Diario.
+6.	Calcular avance esperado vs avance real.
+7.	Responder automáticamente al usuario.
+Ejemplo:
+Sistema:
+¿Cuál es el avance actual de Hincado?
+Usuario:
+52%
+Sistema:
+El avance esperado para hoy era 60%.
+Actualmente reportas 52%.
+Existe una desviación de -8%.
+Estado: Atrasado.
+Se recomienda revisar productividad, restricciones y recursos disponibles.
+________________________________________
+Instrucción técnica
+Antes de escribir código debes:
+1.	Revisar la estructura actual de carpetas.
+2.	Revisar las entidades existentes.
+3.	Identificar qué entidades ya sirven.
+4.	Proponer qué campos faltan.
+5.	Proponer si se requiere una migración nueva.
+6.	Explicar qué archivos se modificarán.
+7.	Explicar el impacto en la base de datos.
+8.	Pedir confirmación antes de generar código.
+No debes asumir que el proyecto está vacío.
+No debes crear otro proyecto.
+No debes cambiar la arquitectura actual.
+Debes continuar desde la etapa actual del desarrollo.
+________________________________________
+Entregable esperado primero
+Antes de programar, entrégame:
+1.	Diagnóstico del estado actual.
+2.	Impacto del nuevo módulo Informe Diario.
+3.	Entidades existentes que se reutilizan.
+4.	Entidades o campos nuevos requeridos.
+5.	Flujo funcional del módulo.
+6.	Diseño de pantallas.
+7.	Reglas de negocio.
+8.	Plan de implementación paso a paso.
+9.	Migraciones necesarias.
+10.	Confirmación antes de escribir código.
+Después de eso, avanzamos por pasos, archivo por archivo, comando por comando.
+

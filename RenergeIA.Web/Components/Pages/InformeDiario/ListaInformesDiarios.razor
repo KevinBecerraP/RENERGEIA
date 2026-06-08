@@ -1,0 +1,258 @@
+@page "/informes-diarios/{ProyectoId:int}"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Informes Diarios - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📋 Informes Diarios</h2>
+            @if (_proyecto is not null)
+            {
+                <p class="text-muted mb-0">Proyecto: <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong></p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/informes-diarios/@ProyectoId/crear" class="btn btn-primary">
+                ➕ Nuevo Informe Diario
+            </a>
+            <a href="/proyectos/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver al Proyecto
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @_error
+            <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_confirmarEliminar && _informeAEliminar is not null)
+    {
+        <div class="alert alert-warning d-flex align-items-center justify-content-between">
+            <div>
+                <strong>⚠️ ¿Seguro que deseas eliminar este informe?</strong>
+                <p class="mb-0 small">
+                    Certificado: <strong>@_informeAEliminar.NumeroCertificado</strong> |
+                    Fecha: <strong>@_informeAEliminar.Fecha.ToString("dd/MM/yyyy")</strong>
+                </p>
+                <p class="mb-0 small text-danger">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger btn-sm" @onclick="EliminarAsync" disabled="@_eliminando">
+                    @if (_eliminando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    Sí, eliminar
+                </button>
+                <button class="btn btn-secondary btn-sm" @onclick="CancelarEliminar">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando informes diarios...</p>
+        </div>
+    }
+    else if (!_informes.Any())
+    {
+        <div class="alert alert-info">
+            <strong>ℹ️ No hay informes diarios registrados</strong>
+            <p class="mb-0">Haz clic en "Nuevo Informe Diario" para crear el primer informe.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Nro. Certificado</th>
+                                <th>Estado</th>
+                                <th>Versión</th>
+                                <th>Personal Total</th>
+                                <th>Creado Por</th>
+                                <th>Enviado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var informe in _informes)
+                            {
+                                <tr>
+                                    <td>@informe.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td>@informe.NumeroCertificado</td>
+                                    <td>
+                                        <span class="badge @ObtenerClaseEstado(informe.Estado)">
+                                            @ObtenerTextoEstado(informe.Estado)
+                                        </span>
+                                    </td>
+                                    <td>v@informe.Version</td>
+                                    <td>@informe.PersonalTotal personas</td>
+                                    <td class="text-muted small">@informe.CreadoPor</td>
+                                    <td>
+                                        @if (informe.Enviado)
+                                        {
+                                            <span class="text-success">✓ Enviado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">⏳ Pendiente</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/informes-diarios/@ProyectoId/@informe.Id" class="btn btn-outline-primary" title="Ver detalle">
+                                                👁️ Ver
+                                            </a>
+                                            @if (informe.Estado == EstadoInforme.Borrador)
+                                            {
+                                                <a href="/informes-diarios/@ProyectoId/editar/@informe.Id" class="btn btn-outline-secondary" title="Editar">
+                                                    ✏️ Editar
+                                                </a>
+                                                <button @onclick="() => ConfirmarEliminar(informe)" class="btn btn-outline-danger" title="Eliminar">
+                                                    🗑️
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 text-muted">
+            <small>Total de informes: <strong>@_informes.Count</strong></small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private List<InformeDiario> _informes = new();
+    private bool _cargando = true;
+    private bool _eliminando = false;
+    private bool _confirmarEliminar = false;
+    private InformeDiario? _informeAEliminar;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                Nav.NavigateTo("/proyectos");
+                return;
+            }
+
+            _informes = await Db.InformesDiarios
+                .Where(i => i.ProyectoId == ProyectoId)
+                .OrderByDescending(i => i.Fecha)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar los informes: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private string ObtenerClaseEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "bg-secondary",
+        EstadoInforme.EnRevision => "bg-warning",
+        EstadoInforme.Aprobado => "bg-success",
+        EstadoInforme.Rechazado => "bg-danger",
+        EstadoInforme.Anulado => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝 Borrador",
+        EstadoInforme.EnRevision => "⏳ En Revisión",
+        EstadoInforme.Aprobado => "✅ Aprobado",
+        EstadoInforme.Rechazado => "❌ Rechazado",
+        EstadoInforme.Anulado => "🚫 Anulado",
+        _ => "Desconocido"
+    };
+
+    private void ConfirmarEliminar(InformeDiario informe)
+    {
+        _informeAEliminar = informe;
+        _confirmarEliminar = true;
+        _error = null;
+    }
+
+    private void CancelarEliminar()
+    {
+        _informeAEliminar = null;
+        _confirmarEliminar = false;
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (_informeAEliminar is null) return;
+
+        _eliminando = true;
+        _error = null;
+
+        try
+        {
+            // Primero eliminar los registros de avance asociados
+            var registrosAvance = await Db.RegistrosAvanceDiario
+                .Where(r => r.InformeDiarioId == _informeAEliminar.Id)
+                .ToListAsync();
+
+            Db.RegistrosAvanceDiario.RemoveRange(registrosAvance);
+
+            // Luego eliminar el informe
+            Db.InformesDiarios.Remove(_informeAEliminar);
+
+            await Db.SaveChangesAsync();
+
+            // Actualizar la lista
+            _informes.Remove(_informeAEliminar);
+            _informeAEliminar = null;
+            _confirmarEliminar = false;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al eliminar el informe: {ex.Message}";
+        }
+        finally
+        {
+            _eliminando = false;
+        }
+    }
+}

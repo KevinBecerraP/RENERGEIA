@@ -28,6 +28,9 @@ public class RenergeIADbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Mantenimiento> Mantenimientos => Set<Mantenimiento>();
     public DbSet<Alerta> Alertas => Set<Alerta>();
     public DbSet<RegistroClima> RegistrosClima => Set<RegistroClima>();
+    public DbSet<RegistroAvancePersonal> RegistrosAvancePersonal => Set<RegistroAvancePersonal>();
+    public DbSet<RegistroAvanceEquipo> RegistrosAvanceEquipo => Set<RegistroAvanceEquipo>();
+    public DbSet<RegistroAvanceRestriccion> RegistrosAvanceRestriccion => Set<RegistroAvanceRestriccion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +55,11 @@ public class RenergeIADbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(r => r.PorcentajeAvance).HasColumnType("decimal(5,2)");
             e.Property(r => r.HorasTrabajadas).HasColumnType("decimal(6,2)");
+            e.Property(r => r.CantidadEjecutadaDia).HasColumnType("decimal(18,4)");
+            e.Property(r => r.AvanceEsperado).HasColumnType("decimal(5,2)");
+            e.Property(r => r.AvanceAcumulado).HasColumnType("decimal(5,2)");
+            e.Property(r => r.Desviacion).HasColumnType("decimal(5,2)");
+            e.Property(r => r.HorasAfectadasClima).HasColumnType("decimal(6,2)");
             e.HasOne(r => r.ActividadWBS)
              .WithMany(a => a.RegistrosAvance)
              .HasForeignKey(r => r.ActividadWBSId)
@@ -121,6 +129,56 @@ public class RenergeIADbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(f => f.Latitud).HasColumnType("decimal(10,7)");
             e.Property(f => f.Longitud).HasColumnType("decimal(10,7)");
+        });
+
+        // InformeDiario — auto-referencia para versionado
+        modelBuilder.Entity<InformeDiario>(e =>
+        {
+            e.HasOne(i => i.InformeDiarioAnterior)
+             .WithMany()
+             .HasForeignKey(i => i.InformeDiarioAnteriorId)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // RegistroAvancePersonal — tabla intermedia M:N
+        modelBuilder.Entity<RegistroAvancePersonal>(e =>
+        {
+            e.Property(r => r.HorasTrabajadas).HasColumnType("decimal(6,2)");
+            e.HasOne(r => r.RegistroAvanceDiario)
+             .WithMany()
+             .HasForeignKey(r => r.RegistroAvanceDiarioId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.PersonalProyecto)
+             .WithMany()
+             .HasForeignKey(r => r.PersonalProyectoId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // RegistroAvanceEquipo — tabla intermedia M:N
+        modelBuilder.Entity<RegistroAvanceEquipo>(e =>
+        {
+            e.Property(r => r.HorasUtilizadas).HasColumnType("decimal(6,2)");
+            e.HasOne(r => r.RegistroAvanceDiario)
+             .WithMany()
+             .HasForeignKey(r => r.RegistroAvanceDiarioId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Equipo)
+             .WithMany()
+             .HasForeignKey(r => r.EquipoId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // RegistroAvanceRestriccion — tabla intermedia M:N
+        modelBuilder.Entity<RegistroAvanceRestriccion>(e =>
+        {
+            e.HasOne(r => r.RegistroAvanceDiario)
+             .WithMany()
+             .HasForeignKey(r => r.RegistroAvanceDiarioId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Restriccion)
+             .WithMany()
+             .HasForeignKey(r => r.RestriccionId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
