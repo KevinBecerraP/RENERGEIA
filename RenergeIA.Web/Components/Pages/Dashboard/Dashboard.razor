@@ -367,6 +367,8 @@
     {
         if (firstRender && _proyecto is not null)
         {
+            // Pequeño delay para asegurar que el DOM esté listo
+            await Task.Delay(100);
             await RenderizarGraficosAsync();
         }
     }
@@ -412,6 +414,8 @@
         if (_usandoDatosDemo)
         {
             GenerarDatosDemo();
+            // Forzar re-render para que los gráficos se actualicen
+            StateHasChanged();
         }
     }
 
