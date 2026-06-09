@@ -9,7 +9,7 @@ public class Documento : EntidadBase
     public string Titulo { get; set; } = string.Empty;
     public TipoDocumento TipoDocumento { get; set; }
     public EstadoDocumento Estado { get; set; } = EstadoDocumento.Borrador;
-    public string Disciplina { get; set; } = string.Empty;
+    public DisciplinaDocumento Disciplina { get; set; }
     public string Descripcion { get; set; } = string.Empty;
     public DateTime FechaEmision { get; set; }
 

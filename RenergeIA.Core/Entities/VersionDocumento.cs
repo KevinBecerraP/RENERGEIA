@@ -6,6 +6,7 @@ public class VersionDocumento : EntidadBase
     public string NumeroVersion { get; set; } = string.Empty;
     public string RutaArchivo { get; set; } = string.Empty;
     public string NombreArchivo { get; set; } = string.Empty;
+    public long TamanioBytes { get; set; }
     public DateTime FechaSubida { get; set; }
     public string SubidoPor { get; set; } = string.Empty;
     public string Comentarios { get; set; } = string.Empty;

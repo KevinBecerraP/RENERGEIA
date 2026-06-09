@@ -1,0 +1,320 @@
+@page "/documentos/{ProyectoId:int}"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@inject DocumentoService DocumentoService
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+@using RenergeIA.Web.Services
+
+<PageTitle>Documentos - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📁 Documentos del Proyecto</h2>
+            @if (_proyecto is not null)
+            {
+                <p class="text-muted mb-0">Proyecto: <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong></p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/documentos/@ProyectoId/crear" class="btn btn-primary">
+                ➕ Nuevo Documento
+            </a>
+            <a href="/proyectos/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver al Proyecto
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tipo de Documento</label>
+                    <select class="form-select" @bind="_filtroTipo">
+                        <option value="">Todos</option>
+                        @foreach (var tipo in Enum.GetValues<TipoDocumento>())
+                        {
+                            <option value="@tipo">@ObtenerTextoTipo(tipo)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Disciplina</label>
+                    <select class="form-select" @bind="_filtroDisciplina">
+                        <option value="">Todas</option>
+                        @foreach (var disc in Enum.GetValues<DisciplinaDocumento>())
+                        {
+                            <option value="@disc">@ObtenerTextoDisciplina(disc)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" @bind="_filtroEstado">
+                        <option value="">Todos</option>
+                        @foreach (var estado in Enum.GetValues<EstadoDocumento>())
+                        {
+                            <option value="@estado">@ObtenerTextoEstado(estado)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-control" @bind="_filtroBusqueda" placeholder="Código o título..." />
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col">
+                    <button class="btn btn-primary btn-sm" @onclick="AplicarFiltrosAsync">
+                        🔍 Filtrar
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="LimpiarFiltrosAsync">
+                        🔄 Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @_error
+            <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando documentos...</p>
+        </div>
+    }
+    else if (!_documentos.Any())
+    {
+        <div class="alert alert-info">
+            <strong>ℹ️ No hay documentos registrados</strong>
+            <p class="mb-0">Haz clic en "Nuevo Documento" para crear el primer documento del proyecto.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Código</th>
+                                <th>Título</th>
+                                <th>Tipo</th>
+                                <th>Disciplina</th>
+                                <th>Estado</th>
+                                <th>Versión Actual</th>
+                                <th>Fecha Emisión</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var doc in _documentos)
+                            {
+                                var versionActual = doc.Versiones.FirstOrDefault(v => v.EsVersionActual);
+                                <tr>
+                                    <td><strong>@doc.Codigo</strong></td>
+                                    <td>@doc.Titulo</td>
+                                    <td><span class="badge bg-info">@ObtenerTextoTipo(doc.TipoDocumento)</span></td>
+                                    <td>@ObtenerTextoDisciplina(doc.Disciplina)</td>
+                                    <td>
+                                        <span class="badge @ObtenerClaseEstado(doc.Estado)">
+                                            @ObtenerTextoEstado(doc.Estado)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (versionActual is not null)
+                                        {
+                                            <span class="badge bg-secondary">@versionActual.NumeroVersion</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Sin versiones</span>
+                                        }
+                                    </td>
+                                    <td>@doc.FechaEmision.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/documentos/@ProyectoId/@doc.Id" class="btn btn-outline-primary" title="Ver detalle">
+                                                👁️ Ver
+                                            </a>
+                                            @if (doc.Estado == EstadoDocumento.Borrador)
+                                            {
+                                                <a href="/documentos/@ProyectoId/editar/@doc.Id" class="btn btn-outline-secondary" title="Editar">
+                                                    ✏️
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 text-muted">
+            <small>Total de documentos: <strong>@_documentos.Count</strong></small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private List<Documento> _documentos = new();
+    private bool _cargando = true;
+    private string? _error;
+
+    // Filtros
+    private string _filtroTipo = "";
+    private string _filtroDisciplina = "";
+    private string _filtroEstado = "";
+    private string _filtroBusqueda = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatosAsync();
+    }
+
+    private async Task CargarDatosAsync()
+    {
+        try
+        {
+            _cargando = true;
+
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                Nav.NavigateTo("/proyectos");
+                return;
+            }
+
+            await AplicarFiltrosAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar documentos: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task AplicarFiltrosAsync()
+    {
+        var query = Db.Documentos
+            .Include(d => d.Versiones)
+            .Where(d => d.ProyectoId == ProyectoId)
+            .AsQueryable();
+
+        // Filtro por tipo
+        if (!string.IsNullOrEmpty(_filtroTipo) && Enum.TryParse<TipoDocumento>(_filtroTipo, out var tipo))
+        {
+            query = query.Where(d => d.TipoDocumento == tipo);
+        }
+
+        // Filtro por disciplina
+        if (!string.IsNullOrEmpty(_filtroDisciplina) && Enum.TryParse<DisciplinaDocumento>(_filtroDisciplina, out var disciplina))
+        {
+            query = query.Where(d => d.Disciplina == disciplina);
+        }
+
+        // Filtro por estado
+        if (!string.IsNullOrEmpty(_filtroEstado) && Enum.TryParse<EstadoDocumento>(_filtroEstado, out var estado))
+        {
+            query = query.Where(d => d.Estado == estado);
+        }
+
+        // Filtro por búsqueda
+        if (!string.IsNullOrEmpty(_filtroBusqueda))
+        {
+            var busqueda = _filtroBusqueda.ToLower();
+            query = query.Where(d =>
+                d.Codigo.ToLower().Contains(busqueda) ||
+                d.Titulo.ToLower().Contains(busqueda)
+            );
+        }
+
+        _documentos = await query
+            .OrderByDescending(d => d.FechaEmision)
+            .ToListAsync();
+    }
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        _filtroTipo = "";
+        _filtroDisciplina = "";
+        _filtroEstado = "";
+        _filtroBusqueda = "";
+        await AplicarFiltrosAsync();
+    }
+
+    private string ObtenerTextoTipo(TipoDocumento tipo) => tipo switch
+    {
+        TipoDocumento.Plano => "📐 Plano",
+        TipoDocumento.Especificacion => "📋 Especificación",
+        TipoDocumento.Contrato => "📄 Contrato",
+        TipoDocumento.Permiso => "📝 Permiso",
+        TipoDocumento.Informe => "📊 Informe",
+        TipoDocumento.Procedimiento => "⚙️ Procedimiento",
+        TipoDocumento.Certificado => "🏆 Certificado",
+        TipoDocumento.Otro => "📁 Otro",
+        _ => tipo.ToString()
+    };
+
+    private string ObtenerTextoDisciplina(DisciplinaDocumento disciplina) => disciplina switch
+    {
+        DisciplinaDocumento.Civil => "🏗️ Civil",
+        DisciplinaDocumento.Electrico => "⚡ Eléctrico",
+        DisciplinaDocumento.Mecanico => "🔧 Mecánico",
+        DisciplinaDocumento.Estructural => "🏢 Estructural",
+        DisciplinaDocumento.InstrumentacionControl => "🎛️ I&C",
+        DisciplinaDocumento.SCADA => "💻 SCADA",
+        DisciplinaDocumento.GestionProyecto => "📊 Gestión",
+        DisciplinaDocumento.HSE => "🦺 HSE",
+        DisciplinaDocumento.Calidad => "✅ Calidad",
+        DisciplinaDocumento.Ambiental => "🌱 Ambiental",
+        DisciplinaDocumento.Otro => "📁 Otro",
+        _ => disciplina.ToString()
+    };
+
+    private string ObtenerTextoEstado(EstadoDocumento estado) => estado switch
+    {
+        EstadoDocumento.Borrador => "📝 Borrador",
+        EstadoDocumento.EnRevision => "🔍 En Revisión",
+        EstadoDocumento.Aprobado => "✅ Aprobado",
+        EstadoDocumento.Rechazado => "❌ Rechazado",
+        EstadoDocumento.Obsoleto => "🗑️ Obsoleto",
+        _ => estado.ToString()
+    };
+
+    private string ObtenerClaseEstado(EstadoDocumento estado) => estado switch
+    {
+        EstadoDocumento.Borrador => "bg-secondary",
+        EstadoDocumento.EnRevision => "bg-warning",
+        EstadoDocumento.Aprobado => "bg-success",
+        EstadoDocumento.Rechazado => "bg-danger",
+        EstadoDocumento.Obsoleto => "bg-dark",
+        _ => "bg-secondary"
+    };
+}

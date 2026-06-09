@@ -51,7 +51,7 @@ Estado de cada etapa de desarrollo. Se actualiza al completar cada una.
 | 7 | Equipos | CRUD de maquinaria por proyecto | ✅ Completo |
 | 8 | WBS / Actividades | Árbol de tareas, plantilla tipo EPC, activar/desactivar | ✅ Completo |
 | 9 | Informe Diario | Registro diario de avance por actividad | ✅ Completo |
-| 10 | Documentos | Gestión documental con versiones | ⏳ Pendiente |
+| 10 | Documentos | Gestión documental con versiones | ✅ Completo |
 | 11 | Costos | Partidas presupuestales y costos reales | ⏳ Pendiente |
 | 12 | No Conformidades | Registro de NC y acciones correctivas | ⏳ Pendiente |
 | 13 | Restricciones | Registro y seguimiento de restricciones | ⏳ Pendiente |
@@ -1920,6 +1920,245 @@ Informe CERT-2026-001:
 - ✅ Lista mostraba todas las versiones (fix: filtrar últimas)
 
 **Estado:** ✅ COMPLETAMENTE FUNCIONAL
+
+---
+
+## ETAPA 10 — Módulo Documentos: Gestión Documental con Versiones — ✅ COMPLETADO (09/06/2026)
+
+**Objetivo:** Sistema completo de gestión de documentos técnicos del proyecto (planos, contratos, especificaciones, reportes) con control de versiones/revisiones.
+
+### 10.1 Entidades y Enums
+
+**Enum creado:**
+- `DisciplinaDocumento.cs` - Disciplinas técnicas para documentos (Civil, Eléctrico, Mecánico, Estructural, I&C, SCADA, Gestión, HSE, Calidad, Ambiental, Otro)
+
+**Entidades actualizadas:**
+- `Documento.cs`
+  - Disciplina cambiada de `string` a `DisciplinaDocumento` (enum)
+  - Campos: Codigo, Titulo, TipoDocumento, Estado, Disciplina, Descripcion, FechaEmision
+  - Relación: Colección de Versiones
+
+- `VersionDocumento.cs`
+  - Agregado campo `TamanioBytes` (long) para tracking del tamaño del archivo
+  - Campos: NumeroVersion, RutaArchivo, NombreArchivo, TamanioBytes, FechaSubida, SubidoPor, Comentarios, EsVersionActual
+
+**Migración:** `ModuloDocumentos_ActualizarEntidades` aplicada exitosamente
+
+### 10.2 Servicio DocumentoService
+
+**Ubicación:** `RenergeIA.Web/Services/DocumentoService.cs`
+
+**Funcionalidades implementadas:**
+1. **Gestión de archivos:**
+   - `GuardarArchivoAsync()` - Sube archivos al servidor con validaciones
+   - Límite: 50 MB por archivo
+   - Extensiones permitidas: PDF, DWG, Excel, Word, Imágenes, ZIP, RAR
+   - Almacenamiento: `wwwroot/uploads/documentos/{proyectoId}/{documentoId}/`
+   - Nomenclatura: `{documentoId}_v{version}_{nombreOriginal}`
+
+2. **Sistema de versionado:**
+   - `SiguienteVersionAsync()` - Calcula siguiente versión (Rev 0 → Rev A → Rev B → ... → Rev Z → Rev AA)
+   - Formato estándar de ingeniería: Rev 0 (inicial), Rev A, Rev B, Rev C...
+   - Incremento alfabético automático con soporte multi-letra
+
+3. **Utilidades:**
+   - `FormatearTamanio()` - Convierte bytes a formato legible (KB, MB, GB)
+   - `CodigoEsUnicoAsync()` - Valida unicidad del código de documento
+   - `DesmarcarVersionesActualesAsync()` - Solo una versión está marcada como actual
+   - `EliminarArchivo()` - Elimina archivos físicos del servidor
+   - `ObtenerRutaCompleta()` - Convierte ruta relativa a absoluta
+
+**Registrado en:** `Program.cs` como servicio Scoped
+
+### 10.3 Páginas Blazor
+
+**1. ListaDocumentos.razor** (`/documentos/{ProyectoId}`)
+- Lista completa de documentos del proyecto
+- **Filtros dinámicos:**
+  - Por tipo de documento
+  - Por disciplina
+  - Por estado
+  - Búsqueda por código o título
+- Vista en tabla con:
+  - Código, título, tipo, disciplina, estado
+  - Versión actual visible
+  - Fecha de emisión
+  - Acciones: Ver, Editar (solo borradores)
+- Badges con íconos y colores por tipo y estado
+
+**2. CrearDocumento.razor** (`/documentos/{ProyectoId}/crear` y `/editar/{DocumentoId}`)
+- Formulario completo de metadatos:
+  - Código (validado único)
+  - Título
+  - Tipo de documento (8 tipos)
+  - Disciplina (11 disciplinas)
+  - Estado
+  - Fecha de emisión
+  - Descripción
+- **Subida de primera versión (solo al crear):**
+  - Componente `InputFile` integrado
+  - Validación de extensión y tamaño
+  - Vista previa del archivo seleccionado
+  - Comentarios de la versión
+- **Edición (solo metadatos):**
+  - Solo documentos en estado Borrador
+  - No permite subir archivo (usar "Subir Nueva Versión")
+
+**3. DetalleDocumento.razor** (`/documentos/{ProyectoId}/{DocumentoId}`)
+- **Panel de información general:**
+  - Todos los metadatos del documento
+  - Código, título, tipo, disciplina, estado, fecha, descripción
+
+- **Panel de versión actual (destacado):**
+  - Número de versión (ej: Rev A)
+  - Nombre del archivo
+  - Tamaño formateado
+  - Fecha y hora de subida
+  - Usuario que subió
+  - Comentarios
+  - **Botón de descarga**
+
+- **Historial completo de versiones:**
+  - Tabla con todas las versiones
+  - Ordenadas de más reciente a más antigua
+  - Versión actual resaltada en verde
+  - Cada versión descargable individualmente
+  - Columnas: Versión, Archivo, Tamaño, Fecha, Usuario, Comentarios, Estado
+
+- **Modal "Subir Nueva Versión":**
+  - Muestra automáticamente la siguiente versión a crear
+  - Selección de archivo
+  - Comentarios obligatorios (describe los cambios)
+  - Desmarca versión anterior como actual
+  - Marca nueva versión como actual
+
+**4. Descarga de archivos:**
+- Función JavaScript en `wwwroot/js/app.js`:
+  - `downloadFile()` - Descarga archivo desde base64
+  - `base64ToBlob()` - Conversión para descarga
+- Soporte para múltiples MIME types
+- Funciona con todos los tipos de archivo permitidos
+
+### 10.4 Integración con el sistema
+
+**Navegación:**
+- Módulo de Documentos habilitado en `DetalleProyecto.razor`
+- Icono: 📁
+- Accesible desde la tarjeta "Módulos del Proyecto"
+- Ruta: `/documentos/{proyectoId}`
+
+**Referencia JavaScript:**
+- Script `app.js` agregado a `App.razor`
+- Carga antes de Blazor para garantizar disponibilidad
+
+### 10.5 Características clave
+
+✅ **Gestión completa de documentos:**
+- Crear documento + subir primera versión (Rev 0)
+- Editar metadatos (solo borradores)
+- Ver detalles completos
+- Listar con filtros avanzados
+
+✅ **Control de versiones/revisiones:**
+- Sistema alfabético estándar de ingeniería
+- Una sola versión marcada como "actual"
+- Historial completo preservado
+- Cada versión es descargable
+- Comentarios obligatorios al subir nueva versión
+
+✅ **Validaciones y seguridad:**
+- Código único por proyecto
+- Extensiones de archivo permitidas
+- Límite de tamaño (50 MB)
+- Almacenamiento organizado por proyecto y documento
+
+✅ **Tipos de documento soportados:**
+- 📐 Planos
+- 📋 Especificaciones
+- 📄 Contratos
+- 📝 Permisos
+- 📊 Informes
+- ⚙️ Procedimientos
+- 🏆 Certificados
+- 📁 Otros
+
+✅ **Disciplinas técnicas:**
+- 🏗️ Civil
+- ⚡ Eléctrico
+- 🔧 Mecánico
+- 🏢 Estructural
+- 🎛️ Instrumentación y Control
+- 💻 SCADA
+- 📊 Gestión del Proyecto
+- 🦺 HSE (Salud, Seguridad, Ambiente)
+- ✅ Calidad
+- 🌱 Ambiental
+- 📁 Otro
+
+✅ **Estados de documento:**
+- 📝 Borrador (editable)
+- 🔍 En Revisión
+- ✅ Aprobado
+- ❌ Rechazado
+- 🗑️ Obsoleto
+
+### 10.6 Archivos creados/modificados
+
+**Nuevos:**
+- `RenergeIA.Core/Enums/DisciplinaDocumento.cs`
+- `RenergeIA.Web/Services/DocumentoService.cs`
+- `RenergeIA.Web/Components/Pages/Documentos/ListaDocumentos.razor`
+- `RenergeIA.Web/Components/Pages/Documentos/CrearDocumento.razor`
+- `RenergeIA.Web/Components/Pages/Documentos/DetalleDocumento.razor`
+- `RenergeIA.Web/wwwroot/js/app.js`
+- `RenergeIA.Infrastructure/Migrations/[timestamp]_ModuloDocumentos_ActualizarEntidades.cs`
+
+**Modificados:**
+- `RenergeIA.Core/Entities/Documento.cs` (Disciplina a enum, actualizado)
+- `RenergeIA.Core/Entities/VersionDocumento.cs` (agregado TamanioBytes)
+- `RenergeIA.Web/Program.cs` (servicio registrado)
+- `RenergeIA.Web/Components/App.razor` (script app.js referenciado)
+- `RenergeIA.Web/Components/Pages/Proyectos/DetalleProyecto.razor` (módulo habilitado)
+
+### 10.7 Flujo de uso completo
+
+1. **Usuario entra al proyecto** → Ve tarjeta "Documentos 📁"
+2. **Clic en Documentos** → Lista vacía, botón "Nuevo Documento"
+3. **Crear primer documento:**
+   - Llena metadatos (código, título, tipo, disciplina, estado, fecha, descripción)
+   - Sube archivo (primera versión = Rev 0)
+   - Agrega comentarios iniciales
+   - Guarda
+4. **Ver documento:**
+   - Muestra todos los metadatos
+   - Panel destacado con versión actual (Rev 0)
+   - Botón descargar
+   - Historial con 1 versión
+5. **Subir nueva versión:**
+   - Botón "Subir Nueva Versión"
+   - Sistema calcula automáticamente Rev A
+   - Usuario sube nuevo archivo
+   - Agrega comentarios de cambios
+   - Rev A se marca como actual, Rev 0 pasa a histórica
+6. **Revisiones sucesivas:**
+   - Rev A → Rev B → Rev C ... Rev Z → Rev AA → Rev AB...
+   - Cada revisión queda en el historial
+   - Siempre una sola versión actual
+   - Todas las versiones anteriores descargables
+
+### 10.8 Mejoras futuras opcionales
+
+- [ ] Aprobación de documentos con firma digital
+- [ ] Notificaciones por email al subir nueva versión
+- [ ] Comentarios/notas por versión
+- [ ] Integración con sistema de permisos (quién puede aprobar)
+- [ ] Vista previa de PDFs en el navegador
+- [ ] Búsqueda de texto dentro de PDFs
+- [ ] Categorías personalizadas por proyecto
+- [ ] Exportar lista de documentos a Excel
+- [ ] QR codes para acceso rápido a documentos
+
+**Estado final:** ✅ MÓDULO COMPLETAMENTE FUNCIONAL Y PROBADO
 
 ---
 

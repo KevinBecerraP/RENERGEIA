@@ -1,0 +1,359 @@
+@page "/documentos/{ProyectoId:int}/crear"
+@page "/documentos/{ProyectoId:int}/editar/{DocumentoId:int}"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@inject DocumentoService DocumentoService
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+@using RenergeIA.Web.Services
+
+<PageTitle>@(_esEdicion ? "Editar" : "Crear") Documento - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>@(_esEdicion ? "✏️ Editar" : "➕ Crear") Documento</h2>
+            @if (_proyecto is not null)
+            {
+                <p class="text-muted mb-0">Proyecto: <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong></p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/documentos/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver a la lista
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @_error
+            <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+        </div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border"></div>
+            <p class="mt-2 text-muted">Cargando...</p>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="_documento" OnValidSubmit="GuardarAsync" FormName="FormDocumento">
+            <div class="row g-4">
+                <!-- Información General -->
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">📋 Información del Documento</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Código del Documento *</label>
+                                    <InputText @bind-Value="_documento.Codigo" class="form-control" placeholder="Ej: PV-SAN-CIV-001" required />
+                                    <small class="form-text text-muted">Debe ser único en el proyecto</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Título *</label>
+                                    <InputText @bind-Value="_documento.Titulo" class="form-control" placeholder="Nombre descriptivo del documento" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Tipo de Documento *</label>
+                                    <InputSelect @bind-Value="_documento.TipoDocumento" class="form-select">
+                                        @foreach (var tipo in Enum.GetValues<TipoDocumento>())
+                                        {
+                                            <option value="@tipo">@ObtenerTextoTipo(tipo)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Disciplina *</label>
+                                    <InputSelect @bind-Value="_documento.Disciplina" class="form-select">
+                                        @foreach (var disc in Enum.GetValues<DisciplinaDocumento>())
+                                        {
+                                            <option value="@disc">@ObtenerTextoDisciplina(disc)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Estado *</label>
+                                    <InputSelect @bind-Value="_documento.Estado" class="form-select">
+                                        @foreach (var estado in Enum.GetValues<EstadoDocumento>())
+                                        {
+                                            <option value="@estado">@ObtenerTextoEstado(estado)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Fecha de Emisión *</label>
+                                    <InputDate @bind-Value="_documento.FechaEmision" class="form-control" />
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Descripción</label>
+                                    <InputTextArea @bind-Value="_documento.Descripcion" class="form-control" rows="3" placeholder="Breve descripción del documento..." />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subir Primera Versión (solo al crear) -->
+                @if (!_esEdicion)
+                {
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">📤 Subir Archivo (Primera Versión)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Archivo *</label>
+                                        <InputFile OnChange="OnArchivoSeleccionado" class="form-control" accept=".pdf,.dwg,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.zip,.rar" />
+                                        <small class="form-text text-muted">
+                                            Extensiones permitidas: PDF, DWG, Excel, Word, Imágenes, ZIP, RAR. Tamaño máximo: 50 MB
+                                        </small>
+                                        @if (_archivoSeleccionado is not null)
+                                        {
+                                            <div class="alert alert-success mt-2 mb-0">
+                                                📎 Archivo seleccionado: <strong>@_nombreArchivo</strong> (@_tamanioArchivo)
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label">Comentarios de la versión</label>
+                                        <textarea @bind="_comentariosVersion" class="form-control" rows="2" placeholder="Ej: Versión inicial del documento"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Botones de acción -->
+                <div class="col-md-12">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@_guardando">
+                            @if (_guardando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            💾 @(_esEdicion ? "Actualizar Documento" : "Crear Documento")
+                        </button>
+                        <a href="/documentos/@ProyectoId" class="btn btn-outline-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int? DocumentoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private Documento _documento = new();
+    private bool _cargando = true;
+    private bool _guardando = false;
+    private bool _esEdicion => DocumentoId.HasValue;
+    private string? _error;
+
+    // Subida de archivo
+    private IBrowserFile? _archivoSeleccionado;
+    private string _nombreArchivo = "";
+    private string _tamanioArchivo = "";
+    private string _comentariosVersion = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                Nav.NavigateTo("/proyectos");
+                return;
+            }
+
+            if (_esEdicion && DocumentoId.HasValue)
+            {
+                var documento = await Db.Documentos
+                    .Include(d => d.Versiones)
+                    .FirstOrDefaultAsync(d => d.Id == DocumentoId.Value);
+
+                if (documento is null)
+                {
+                    Nav.NavigateTo($"/documentos/{ProyectoId}");
+                    return;
+                }
+
+                _documento = documento;
+            }
+            else
+            {
+                _documento = new Documento
+                {
+                    ProyectoId = ProyectoId,
+                    FechaEmision = DateTime.Today,
+                    Estado = EstadoDocumento.Borrador
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar el formulario: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private void OnArchivoSeleccionado(InputFileChangeEventArgs e)
+    {
+        _archivoSeleccionado = e.File;
+        _nombreArchivo = _archivoSeleccionado.Name;
+        _tamanioArchivo = DocumentoService.FormatearTamanio(_archivoSeleccionado.Size);
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            // Validar código único
+            var codigoUnico = await DocumentoService.CodigoEsUnicoAsync(
+                ProyectoId,
+                _documento.Codigo,
+                _esEdicion ? DocumentoId : null
+            );
+
+            if (!codigoUnico)
+            {
+                _error = $"Ya existe un documento con el código '{_documento.Codigo}' en este proyecto.";
+                _guardando = false;
+                return;
+            }
+
+            if (_esEdicion)
+            {
+                // Actualizar documento existente
+                Db.Documentos.Update(_documento);
+                await Db.SaveChangesAsync();
+            }
+            else
+            {
+                // Validar que se haya seleccionado un archivo
+                if (_archivoSeleccionado is null)
+                {
+                    _error = "Debes seleccionar un archivo para la primera versión del documento.";
+                    _guardando = false;
+                    return;
+                }
+
+                // Crear documento
+                _documento.FechaCreacion = DateTime.UtcNow;
+                Db.Documentos.Add(_documento);
+                await Db.SaveChangesAsync();
+
+                // Subir archivo como Rev 0
+                using var stream = _archivoSeleccionado.OpenReadStream(maxAllowedSize: 52428800); // 50 MB
+
+                var (success, rutaArchivo, errorMsg) = await DocumentoService.GuardarArchivoAsync(
+                    ProyectoId,
+                    _documento.Id,
+                    "0",
+                    stream,
+                    _archivoSeleccionado.Name
+                );
+
+                if (!success)
+                {
+                    _error = errorMsg;
+                    _guardando = false;
+                    return;
+                }
+
+                // Crear primera versión
+                var primeraVersion = new VersionDocumento
+                {
+                    DocumentoId = _documento.Id,
+                    NumeroVersion = "Rev 0",
+                    RutaArchivo = rutaArchivo!,
+                    NombreArchivo = _archivoSeleccionado.Name,
+                    TamanioBytes = _archivoSeleccionado.Size,
+                    FechaSubida = DateTime.UtcNow,
+                    SubidoPor = "Usuario Actual", // TODO: Obtener del contexto de Identity
+                    Comentarios = _comentariosVersion,
+                    EsVersionActual = true,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                Db.VersionesDocumento.Add(primeraVersion);
+                await Db.SaveChangesAsync();
+            }
+
+            Nav.NavigateTo($"/documentos/{ProyectoId}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private string ObtenerTextoTipo(TipoDocumento tipo) => tipo switch
+    {
+        TipoDocumento.Plano => "📐 Plano",
+        TipoDocumento.Especificacion => "📋 Especificación",
+        TipoDocumento.Contrato => "📄 Contrato",
+        TipoDocumento.Permiso => "📝 Permiso",
+        TipoDocumento.Informe => "📊 Informe",
+        TipoDocumento.Procedimiento => "⚙️ Procedimiento",
+        TipoDocumento.Certificado => "🏆 Certificado",
+        TipoDocumento.Otro => "📁 Otro",
+        _ => tipo.ToString()
+    };
+
+    private string ObtenerTextoDisciplina(DisciplinaDocumento disciplina) => disciplina switch
+    {
+        DisciplinaDocumento.Civil => "🏗️ Civil",
+        DisciplinaDocumento.Electrico => "⚡ Eléctrico",
+        DisciplinaDocumento.Mecanico => "🔧 Mecánico",
+        DisciplinaDocumento.Estructural => "🏢 Estructural",
+        DisciplinaDocumento.InstrumentacionControl => "🎛️ I&C",
+        DisciplinaDocumento.SCADA => "💻 SCADA",
+        DisciplinaDocumento.GestionProyecto => "📊 Gestión",
+        DisciplinaDocumento.HSE => "🦺 HSE",
+        DisciplinaDocumento.Calidad => "✅ Calidad",
+        DisciplinaDocumento.Ambiental => "🌱 Ambiental",
+        DisciplinaDocumento.Otro => "📁 Otro",
+        _ => disciplina.ToString()
+    };
+
+    private string ObtenerTextoEstado(EstadoDocumento estado) => estado switch
+    {
+        EstadoDocumento.Borrador => "📝 Borrador",
+        EstadoDocumento.EnRevision => "🔍 En Revisión",
+        EstadoDocumento.Aprobado => "✅ Aprobado",
+        EstadoDocumento.Rechazado => "❌ Rechazado",
+        EstadoDocumento.Obsoleto => "🗑️ Obsoleto",
+        _ => estado.ToString()
+    };
+}

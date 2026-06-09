@@ -30,6 +30,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddScoped<RenergeIA.Web.Services.InformeDiarioService>();
+builder.Services.AddScoped<RenergeIA.Web.Services.DocumentoService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
