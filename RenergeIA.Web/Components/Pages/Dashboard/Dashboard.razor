@@ -1,0 +1,437 @@
+@page "/proyectos/{ProyectoId:int}/dashboard"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject RenergeIA.Web.Services.InformeDiarioService InformeService
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Dashboard - @(_proyecto?.Nombre ?? "Proyecto") - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📊 Dashboard del Proyecto</h2>
+            @if (_proyecto is not null)
+            {
+                <p class="text-muted mb-0">
+                    <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong>
+                </p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/proyectos/@ProyectoId" class="btn btn-outline-secondary">
+                ← Volver al Proyecto
+            </a>
+        </div>
+    </div>
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 text-muted">Cargando dashboard...</p>
+        </div>
+    }
+    else if (_proyecto is null)
+    {
+        <div class="alert alert-warning">
+            <strong>⚠️ Proyecto no encontrado</strong>
+            <p class="mb-0">El proyecto solicitado no existe.</p>
+        </div>
+    }
+    else
+    {
+        <!-- KPIs Principales -->
+        <div class="row g-4 mb-4">
+            <!-- Avance General -->
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small mb-2">AVANCE PROGRAMADO</div>
+                        <div class="display-4 fw-bold text-primary">@_avanceProgramado.ToString("0.0")%</div>
+                        <div class="small text-muted mt-2">Al @DateTime.Today.ToString("dd/MM/yyyy")</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small mb-2">AVANCE EJECUTADO</div>
+                        <div class="display-4 fw-bold @(_avanceEjecutado >= _avanceProgramado ? "text-success" : "text-danger")">
+                            @_avanceEjecutado.ToString("0.0")%
+                        </div>
+                        <div class="small text-muted mt-2">Real acumulado</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small mb-2">DESVIACIÓN</div>
+                        <div class="display-4 fw-bold @(_desviacion >= 0 ? "text-success" : "text-danger")">
+                            @(_desviacion >= 0 ? "+" : "")@_desviacion.ToString("0.0")%
+                        </div>
+                        <div class="small mt-2">
+                            @if (_desviacion > 5)
+                            {
+                                <span class="badge bg-success">🟢 Adelantado</span>
+                            }
+                            else if (_desviacion < -5)
+                            {
+                                <span class="badge bg-danger">🔴 Atrasado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">🟡 Al Día</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small mb-2">SPI (ÍNDICE)</div>
+                        <div class="display-4 fw-bold @(_spi >= 1 ? "text-success" : "text-danger")">
+                            @_spi.ToString("0.00")
+                        </div>
+                        <div class="small text-muted mt-2">
+                            @(_spi >= 1 ? "Por encima del plan" : "Por debajo del plan")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividades por Estado -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="h1 mb-2">📋</div>
+                        <div class="display-6 fw-bold">@_totalActividades</div>
+                        <div class="text-muted small">Total Actividades</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 border-success">
+                    <div class="card-body text-center">
+                        <div class="h1 mb-2">✅</div>
+                        <div class="display-6 fw-bold text-success">@_actividadesCompletadas</div>
+                        <div class="text-muted small">Completadas (100%)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 border-primary">
+                    <div class="card-body text-center">
+                        <div class="h1 mb-2">⚙️</div>
+                        <div class="display-6 fw-bold text-primary">@_actividadesEnEjecucion</div>
+                        <div class="text-muted small">En Ejecución</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100 border-danger">
+                    <div class="card-body text-center">
+                        <div class="h1 mb-2">🔴</div>
+                        <div class="display-6 fw-bold text-danger">@_actividadesAtrasadas</div>
+                        <div class="text-muted small">Atrasadas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Curva S -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header" style="background: #1b2838; color: white;">
+                        <h5 class="mb-0">📈 Curva S - Avance del Proyecto</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 400px;">
+                            <canvas id="curvaSChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado de Actividades (Dona) -->
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header" style="background: #1b2838; color: white;">
+                        <h5 class="mb-0">📊 Distribución de Actividades</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 400px;">
+                            <canvas id="donutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Avance por Disciplina -->
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header" style="background: #1b2838; color: white;">
+                        <h5 class="mb-0">🎯 Avance por Disciplina</h5>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 400px;">
+                            <canvas id="disciplinaChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla Resumen por Disciplina -->
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header" style="background: #1b2838; color: white;">
+                        <h5 class="mb-0">📋 Detalle por Disciplina</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (_resumenDisciplinas.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Disciplina</th>
+                                            <th class="text-center">Actividades</th>
+                                            <th class="text-center">Avance Programado</th>
+                                            <th class="text-center">Avance Ejecutado</th>
+                                            <th class="text-center">Desviación</th>
+                                            <th class="text-center">SPI</th>
+                                            <th class="text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var resumen in _resumenDisciplinas.OrderByDescending(r => r.AvanceReal))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@ObtenerIconoDisciplina(resumen.Disciplina) @resumen.Disciplina</strong>
+                                                </td>
+                                                <td class="text-center">@resumen.TotalActividades</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-secondary">@resumen.AvanceEsperado.ToString("0.00")%</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-primary">@resumen.AvanceReal.ToString("0.00")%</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge @ObtenerClaseDesviacion(resumen.Desviacion)">
+                                                        @(resumen.Desviacion >= 0 ? "+" : "")@resumen.Desviacion.ToString("0.00")%
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <strong class="@(resumen.SPI >= 1 ? "text-success" : "text-danger")">
+                                                        @resumen.SPI.ToString("0.00")
+                                                    </strong>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (resumen.Desviacion > 5)
+                                                    {
+                                                        <span>🟢</span>
+                                                    }
+                                                    else if (resumen.Desviacion < -5)
+                                                    {
+                                                        <span>🔴</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>🟡</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info m-3">
+                                <strong>ℹ️ No hay datos de disciplinas</strong>
+                                <p class="mb-0">Crea actividades en el WBS para ver el avance por disciplina.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private bool _cargando = true;
+
+    // KPIs principales
+    private decimal _avanceProgramado = 0;
+    private decimal _avanceEjecutado = 0;
+    private decimal _desviacion = 0;
+    private decimal _spi = 0;
+
+    // Actividades
+    private int _totalActividades = 0;
+    private int _actividadesCompletadas = 0;
+    private int _actividadesEnEjecucion = 0;
+    private int _actividadesAtrasadas = 0;
+
+    // Datos para gráficos
+    private List<RenergeIA.Web.Services.ResumenDisciplina> _resumenDisciplinas = new();
+    private List<RenergeIA.Web.Services.PuntoCurvaS> _puntosCurvaS = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+            if (_proyecto is null)
+            {
+                return;
+            }
+
+            await CargarDatosAsync();
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _proyecto is not null)
+        {
+            await RenderizarGraficosAsync();
+        }
+    }
+
+    private async Task CargarDatosAsync()
+    {
+        // Cargar actividades
+        var actividades = await Db.ActividadesWBS
+            .Where(a => a.ProyectoId == ProyectoId && a.Activo)
+            .ToListAsync();
+
+        _totalActividades = actividades.Count;
+
+        if (_totalActividades == 0)
+            return;
+
+        var fechaActual = DateTime.Today;
+
+        // Calcular KPIs principales
+        _avanceProgramado = actividades.Average(a => InformeService.CalcularAvanceEsperado(a, fechaActual));
+        _avanceEjecutado = actividades.Average(a => a.AvanceReal);
+        _desviacion = _avanceEjecutado - _avanceProgramado;
+        _spi = _avanceProgramado > 0 ? _avanceEjecutado / _avanceProgramado : 1;
+
+        // Calcular actividades por estado
+        _actividadesCompletadas = actividades.Count(a => a.AvanceReal >= 100);
+        _actividadesEnEjecucion = actividades.Count(a => a.AvanceReal > 0 && a.AvanceReal < 100);
+        _actividadesAtrasadas = actividades.Count(a =>
+        {
+            var esperado = InformeService.CalcularAvanceEsperado(a, fechaActual);
+            return a.AvanceReal < esperado - 5;
+        });
+
+        // Obtener resumen por disciplina
+        _resumenDisciplinas = await InformeService.ObtenerResumenPorDisciplinaAsync(ProyectoId, fechaActual);
+
+        // Generar Curva S
+        _puntosCurvaS = await InformeService.GenerarCurvaSAsync(ProyectoId);
+    }
+
+    private async Task RenderizarGraficosAsync()
+    {
+        try
+        {
+            // Curva S
+            if (_puntosCurvaS.Any())
+            {
+                var labels = _puntosCurvaS.Select(p => p.Fecha.ToString("dd/MM")).ToArray();
+                var dataProgramada = _puntosCurvaS.Select(p => (double)p.AvanceEsperado).ToArray();
+                var dataEjecutada = _puntosCurvaS.Select(p => (double)p.AvanceReal).ToArray();
+
+                await JS.InvokeVoidAsync("createCurvaSChart", "curvaSChart", labels, dataProgramada, dataEjecutada);
+            }
+
+            // Gráfico de disciplinas
+            if (_resumenDisciplinas.Any())
+            {
+                var labels = _resumenDisciplinas.Select(r => r.Disciplina.ToString()).ToArray();
+                var dataProgramada = _resumenDisciplinas.Select(r => (double)r.AvanceEsperado).ToArray();
+                var dataEjecutada = _resumenDisciplinas.Select(r => (double)r.AvanceReal).ToArray();
+
+                await JS.InvokeVoidAsync("createDisciplinaChart", "disciplinaChart", labels, dataProgramada, dataEjecutada);
+            }
+
+            // Gráfico de dona (distribución de actividades)
+            var donutLabels = new[] { "Completadas", "En Ejecución", "Atrasadas", "Sin Iniciar" };
+            var donutData = new[]
+            {
+                _actividadesCompletadas,
+                _actividadesEnEjecucion,
+                _actividadesAtrasadas,
+                _totalActividades - _actividadesCompletadas - _actividadesEnEjecucion - _actividadesAtrasadas
+            };
+            var donutColors = new[]
+            {
+                "rgba(75, 192, 192, 0.7)",
+                "rgba(54, 162, 235, 0.7)",
+                "rgba(255, 99, 132, 0.7)",
+                "rgba(201, 203, 207, 0.7)"
+            };
+
+            await JS.InvokeVoidAsync("createDonutChart", "donutChart", donutLabels, donutData, donutColors);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al renderizar gráficos: {ex.Message}");
+        }
+    }
+
+    private string ObtenerIconoDisciplina(Disciplina disciplina) => disciplina switch
+    {
+        Disciplina.InicioContrato => "📋",
+        Disciplina.EstudiosIngenieria => "📐",
+        Disciplina.IngenieriaDetalle => "🔧",
+        Disciplina.Suministro => "📦",
+        Disciplina.ConstruccionCivil => "🏗️",
+        Disciplina.Mecanica => "⚙️",
+        Disciplina.Electrica => "⚡",
+        Disciplina.Pruebas => "🧪",
+        Disciplina.CierreContrato => "✅",
+        _ => "📁"
+    };
+
+    private string ObtenerClaseDesviacion(decimal desviacion) => desviacion switch
+    {
+        > 5 => "bg-success",
+        < -5 => "bg-danger",
+        _ => "bg-warning text-dark"
+    };
+}

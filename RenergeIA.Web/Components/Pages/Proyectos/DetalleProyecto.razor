@@ -161,6 +161,7 @@ else
         _proyecto = await Db.Proyectos.FindAsync(Id);
         _modulos =
         [
+            ("Dashboard",          "📊", true,  $"/proyectos/{Id}/dashboard"),
             ("Personal",           "👷", true,  $"/proyectos/{Id}/personal"),
             ("Equipos",            "⚙️",  true,  $"/proyectos/{Id}/equipos"),
             ("WBS / Actividades",  "📄", true,  $"/proyectos/{Id}/wbs"),
