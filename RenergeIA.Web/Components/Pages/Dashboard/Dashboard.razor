@@ -154,12 +154,45 @@
             </div>
         </div>
 
+        <!-- Banner de Datos de Demostración -->
+        @if (_usandoDatosDemo)
+        {
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-warning border-warning shadow-sm" style="background: #fff3cd; border-left: 5px solid #ff9800;">
+                        <div class="d-flex align-items-center">
+                            <div style="font-size: 2.5rem; margin-right: 1rem;">⚠️</div>
+                            <div class="flex-grow-1">
+                                <h5 class="alert-heading mb-2">
+                                    <strong>DATOS DE DEMOSTRACIÓN</strong>
+                                </h5>
+                                <p class="mb-2">
+                                    Los gráficos mostrados a continuación utilizan <strong>datos de ejemplo</strong>
+                                    porque este proyecto aún no tiene suficiente información de avance registrada.
+                                </p>
+                                <hr class="my-2">
+                                <p class="mb-0 small">
+                                    💡 <strong>Para ver datos reales:</strong>
+                                    <a href="/informes-diarios/@ProyectoId" class="alert-link fw-bold">Crea informes diarios</a>
+                                    y registra el avance de las actividades del proyecto.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <!-- Curva S -->
         <div class="row g-4 mb-4">
             <div class="col-md-8">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-header" style="background: #1b2838; color: white;">
+                <div class="card shadow-sm border-0 h-100 @(_usandoDatosDemo ? "border-warning" : "")">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background: #1b2838; color: white;">
                         <h5 class="mb-0">📈 Curva S - Avance del Proyecto</h5>
+                        @if (_usandoDatosDemo)
+                        {
+                            <span class="badge bg-warning text-dark">DEMO</span>
+                        }
                     </div>
                     <div class="card-body">
                         <div style="height: 400px;">
@@ -171,9 +204,13 @@
 
             <!-- Estado de Actividades (Dona) -->
             <div class="col-md-4">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-header" style="background: #1b2838; color: white;">
+                <div class="card shadow-sm border-0 h-100 @(_usandoDatosDemo ? "border-warning" : "")">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background: #1b2838; color: white;">
                         <h5 class="mb-0">📊 Distribución de Actividades</h5>
+                        @if (_usandoDatosDemo)
+                        {
+                            <span class="badge bg-warning text-dark">DEMO</span>
+                        }
                     </div>
                     <div class="card-body">
                         <div style="height: 400px;">
@@ -187,9 +224,13 @@
         <!-- Avance por Disciplina -->
         <div class="row g-4 mb-4">
             <div class="col-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header" style="background: #1b2838; color: white;">
+                <div class="card shadow-sm border-0 @(_usandoDatosDemo ? "border-warning" : "")">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background: #1b2838; color: white;">
                         <h5 class="mb-0">🎯 Avance por Disciplina</h5>
+                        @if (_usandoDatosDemo)
+                        {
+                            <span class="badge bg-warning text-dark">DEMO</span>
+                        }
                     </div>
                     <div class="card-body">
                         <div style="height: 400px;">
@@ -286,6 +327,7 @@
 
     private Proyecto? _proyecto;
     private bool _cargando = true;
+    private bool _usandoDatosDemo = false;
 
     // KPIs principales
     private decimal _avanceProgramado = 0;
@@ -363,6 +405,58 @@
 
         // Generar Curva S
         _puntosCurvaS = await InformeService.GenerarCurvaSAsync(ProyectoId);
+
+        // Detectar si necesitamos datos de demostración
+        _usandoDatosDemo = (_avanceProgramado + _avanceEjecutado < 5) || !_puntosCurvaS.Any();
+
+        if (_usandoDatosDemo)
+        {
+            GenerarDatosDemo();
+        }
+    }
+
+    private void GenerarDatosDemo()
+    {
+        // Generar Curva S de demostración (12 puntos mensuales)
+        var fechaInicio = _proyecto?.FechaInicioPlanificada ?? DateTime.Today.AddMonths(-6);
+        _puntosCurvaS = new List<RenergeIA.Web.Services.PuntoCurvaS>();
+
+        for (int i = 0; i <= 12; i++)
+        {
+            var fecha = fechaInicio.AddMonths(i);
+            var avanceProgramado = Math.Min(100m, (decimal)i / 12 * 100);
+            var avanceReal = Math.Min(100m, avanceProgramado * 0.85m + (i % 3) * 3); // Simula pequeñas variaciones
+
+            _puntosCurvaS.Add(new RenergeIA.Web.Services.PuntoCurvaS
+            {
+                Fecha = fecha,
+                AvanceEsperado = Math.Round(avanceProgramado, 2),
+                AvanceReal = Math.Round(avanceReal, 2)
+            });
+        }
+
+        // Generar resumen de disciplinas de demostración
+        if (!_resumenDisciplinas.Any())
+        {
+            var disciplinasDemo = new[]
+            {
+                (Disciplina.ConstruccionCivil, 25, 45m, 42m),
+                (Disciplina.Electrica, 30, 35m, 38m),
+                (Disciplina.Mecanica, 20, 50m, 48m),
+                (Disciplina.Suministro, 15, 65m, 60m),
+                (Disciplina.IngenieriaDetalle, 12, 80m, 85m)
+            };
+
+            _resumenDisciplinas = disciplinasDemo.Select(d => new RenergeIA.Web.Services.ResumenDisciplina
+            {
+                Disciplina = d.Item1,
+                TotalActividades = d.Item2,
+                AvanceEsperado = d.Item3,
+                AvanceReal = d.Item4,
+                Desviacion = d.Item4 - d.Item3,
+                SPI = d.Item3 > 0 ? d.Item4 / d.Item3 : 1
+            }).ToList();
+        }
     }
 
     private async Task RenderizarGraficosAsync()
