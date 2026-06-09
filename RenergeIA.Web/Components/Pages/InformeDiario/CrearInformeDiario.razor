@@ -39,7 +39,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border"></div>
-            <p class="mt-2 text-muted">Cargando...</p>
+            <p class="mt-2 text-muted">Cargando actividades...</p>
         </div>
     }
     else
@@ -48,27 +48,27 @@
             <div class="row g-4">
                 <!-- Información General -->
                 <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="card shadow-sm">
+                        <div class="card-header" style="background: #1b2838; color: white;">
                             <h5 class="mb-0">📋 Información General</h5>
                         </div>
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-3">
-                                    <label class="form-label">Fecha del Informe *</label>
-                                    <InputDate @bind-Value="_informe.Fecha" class="form-control" />
+                                    <label class="form-label fw-bold">Fecha del Informe *</label>
+                                    <InputDate @bind-Value="_informe.Fecha" class="form-control" @bind-Value:after="RecalcularAvancesProgramados" />
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Nro. Certificado *</label>
+                                    <label class="form-label fw-bold">Nro. Certificado *</label>
                                     <InputText @bind-Value="_informe.NumeroCertificado" class="form-control" placeholder="Ej: CERT-2026-001" required />
                                     <small class="form-text text-muted">Debe ser único en el proyecto</small>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Personal Total</label>
+                                    <label class="form-label fw-bold">Personal Total</label>
                                     <InputNumber @bind-Value="_informe.PersonalTotal" class="form-control" />
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Estado</label>
+                                    <label class="form-label fw-bold">Estado</label>
                                     <InputSelect @bind-Value="_informe.Estado" class="form-select">
                                         @foreach (var estado in Enum.GetValues<EstadoInforme>())
                                         {
@@ -77,17 +77,17 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-12">
-                                    <label class="form-label">Resumen de Actividades</label>
+                                    <label class="form-label fw-bold">Resumen de Actividades</label>
                                     <InputTextArea @bind-Value="_informe.ResumenActividades" class="form-control" rows="3" placeholder="Breve resumen de las actividades del día..." />
                                 </div>
                                 <div class="col-md-12">
-                                    <label class="form-label">Observaciones Generales</label>
+                                    <label class="form-label fw-bold">Observaciones Generales</label>
                                     <InputTextArea @bind-Value="_informe.Observaciones" class="form-control" rows="2" />
                                 </div>
                                 @if (_esEdicion)
                                 {
                                     <div class="col-md-12">
-                                        <label class="form-label">¿Qué cambió en esta versión? (Opcional)</label>
+                                        <label class="form-label fw-bold">¿Qué cambió en esta versión? (Opcional)</label>
                                         <InputTextArea @bind-Value="_informe.ComentarioCambio" class="form-control" rows="2" placeholder="Ej: Agregué actividad X, corregí cantidad de personal..." />
                                         <small class="form-text text-muted">Esto ayuda a entender el historial de cambios</small>
                                     </div>
@@ -97,67 +97,134 @@
                     </div>
                 </div>
 
-                <!-- Registros de Avance -->
+                <!-- Avances del Día - TABLA AUTOMÁTICA -->
                 <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">📊 Avances del Día</h5>
-                            <button type="button" class="btn btn-sm btn-success" @onclick="AgregarRegistroAvance">
-                                ➕ Agregar Actividad
-                            </button>
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="background: #1b2838; color: white;">
+                            <h5 class="mb-0">📊 Avances del Día (@_actividadesConAvance.Count actividades)</h5>
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-success">@_actividadesConAvance.Count(@a => a.Estado == EstadoAvance.Adelantado) Adelantadas</span>
+                                <span class="badge bg-warning text-dark">@_actividadesConAvance.Count(@a => a.Estado == EstadoAvance.AlDia) Al Día</span>
+                                <span class="badge bg-danger">@_actividadesConAvance.Count(@a => a.Estado == EstadoAvance.Atrasado) Atrasadas</span>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            @if (!_registrosAvance.Any())
+                        <div class="card-body p-0">
+                            @if (!_actividadesConAvance.Any())
                             {
-                                <div class="alert alert-info">
-                                    <strong>ℹ️ No hay registros de avance</strong>
-                                    <p class="mb-0">Haz clic en "Agregar Actividad" para registrar el avance de una actividad del día.</p>
+                                <div class="alert alert-info m-3">
+                                    <strong>ℹ️ No hay actividades en el WBS</strong>
+                                    <p class="mb-0">Primero debes crear actividades en el módulo WBS del proyecto.</p>
+                                    <a href="/proyectos/@ProyectoId/wbs" class="btn btn-sm btn-primary mt-2">Ir a WBS</a>
                                 </div>
                             }
                             else
                             {
                                 <div class="table-responsive">
-                                    <table class="table table-sm">
+                                    <table class="table table-hover table-sm mb-0">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width:40%">Actividad</th>
-                                                <th style="width:15%">Avance %</th>
-                                                <th style="width:15%">Horas</th>
-                                                <th style="width:15%">Personal</th>
-                                                <th style="width:15%" class="text-end">Acciones</th>
+                                                <th style="width:8%">Código WBS</th>
+                                                <th style="width:20%">Actividad</th>
+                                                <th style="width:8%">Disciplina</th>
+                                                <th style="width:8%">Inicio</th>
+                                                <th style="width:8%">Fin</th>
+                                                <th style="width:6%" class="text-center">Duración</th>
+                                                <th style="width:8%" class="text-center bg-light">
+                                                    <span class="text-muted small">Programado %</span>
+                                                </th>
+                                                <th style="width:10%" class="text-center bg-warning bg-opacity-10">
+                                                    <span class="fw-bold small">Avance Real %</span>
+                                                </th>
+                                                <th style="width:8%" class="text-center bg-light">
+                                                    <span class="text-muted small">Desviación</span>
+                                                </th>
+                                                <th style="width:6%" class="text-center">Personal</th>
+                                                <th style="width:6%" class="text-center">Horas</th>
+                                                <th style="width:4%" class="text-center">Estado</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach (var (registro, index) in _registrosAvance.Select((r, i) => (r, i)))
+                                            @foreach (var item in _actividadesConAvance)
                                             {
                                                 <tr>
-                                                    <td>
-                                                        <select @bind="registro.ActividadWBSId" class="form-select form-select-sm">
-                                                            <option value="0">-- Seleccionar actividad --</option>
-                                                            @foreach (var act in _actividadesDisponibles)
-                                                            {
-                                                                <option value="@act.Id">@act.CodigoWBS - @act.Nombre</option>
-                                                            }
-                                                        </select>
+                                                    <td class="small align-middle"><code>@item.Actividad.CodigoWBS</code></td>
+                                                    <td class="small align-middle">@item.Actividad.Nombre</td>
+                                                    <td class="small align-middle">@ObtenerIconoDisciplina(item.Actividad.Disciplina)</td>
+                                                    <td class="small align-middle">@item.Actividad.FechaInicioPlanificada.ToString("dd/MM/yy")</td>
+                                                    <td class="small align-middle">@item.Actividad.FechaFinPlanificada.ToString("dd/MM/yy")</td>
+                                                    <td class="small text-center align-middle">@((item.Actividad.FechaFinPlanificada - item.Actividad.FechaInicioPlanificada).Days)d</td>
+
+                                                    <!-- Avance Programado (CALCULADO - READ ONLY) -->
+                                                    <td class="text-center align-middle bg-light">
+                                                        <span class="badge bg-secondary">@item.AvanceProgramado.ToString("0.00")%</span>
                                                     </td>
-                                                    <td>
-                                                        <input type="number" @bind="registro.PorcentajeAvance" class="form-control form-control-sm" min="0" max="100" step="0.01" />
+
+                                                    <!-- Avance Real (ÚNICO CAMPO EDITABLE) -->
+                                                    <td class="text-center align-middle bg-warning bg-opacity-10">
+                                                        <input type="number"
+                                                               @bind="item.AvanceReal"
+                                                               @bind:after="() => RecalcularDesviacion(item)"
+                                                               class="form-control form-control-sm text-center fw-bold"
+                                                               min="0"
+                                                               max="100"
+                                                               step="0.01"
+                                                               style="max-width: 80px; margin: 0 auto;" />
                                                     </td>
-                                                    <td>
-                                                        <input type="number" @bind="registro.HorasTrabajadas" class="form-control form-control-sm" min="0" step="0.5" />
+
+                                                    <!-- Desviación (CALCULADA - READ ONLY) -->
+                                                    <td class="text-center align-middle bg-light">
+                                                        <span class="badge @ObtenerClaseDesviacion(item.Desviacion)">
+                                                            @(item.Desviacion >= 0 ? "+" : "")@item.Desviacion.ToString("0.00")%
+                                                        </span>
                                                     </td>
-                                                    <td>
-                                                        <input type="number" @bind="registro.PersonalEnSitio" class="form-control form-control-sm" min="0" />
+
+                                                    <!-- Campos opcionales -->
+                                                    <td class="text-center align-middle">
+                                                        <input type="number"
+                                                               @bind="item.PersonalEnSitio"
+                                                               class="form-control form-control-sm text-center"
+                                                               min="0"
+                                                               style="max-width: 60px; margin: 0 auto;" />
                                                     </td>
-                                                    <td class="text-end">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => EliminarRegistroAvance(index)">
-                                                            🗑️
-                                                        </button>
+                                                    <td class="text-center align-middle">
+                                                        <input type="number"
+                                                               @bind="item.HorasTrabajadas"
+                                                               class="form-control form-control-sm text-center"
+                                                               min="0"
+                                                               step="0.5"
+                                                               style="max-width: 60px; margin: 0 auto;" />
+                                                    </td>
+
+                                                    <!-- Estado (CALCULADO - READ ONLY) -->
+                                                    <td class="text-center align-middle">
+                                                        <span style="font-size: 1.2rem;" title="@item.Estado">
+                                                            @ObtenerIconoEstado(item.Estado)
+                                                        </span>
                                                     </td>
                                                 </tr>
                                             }
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <!-- Resumen general -->
+                                <div class="card-footer bg-light">
+                                    <div class="row text-center">
+                                        <div class="col">
+                                            <div class="small text-muted">Avance Programado Promedio</div>
+                                            <div class="h5 mb-0">@_actividadesConAvance.Average(a => a.AvanceProgramado).ToString("0.00")%</div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="small text-muted">Avance Real Promedio</div>
+                                            <div class="h5 mb-0">@_actividadesConAvance.Average(a => a.AvanceReal).ToString("0.00")%</div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="small text-muted">Desviación Promedio</div>
+                                            <div class="h5 mb-0 @(_actividadesConAvance.Average(a => a.Desviacion) >= 0 ? "text-success" : "text-danger")">
+                                                @(_actividadesConAvance.Average(a => a.Desviacion) >= 0 ? "+" : "")@_actividadesConAvance.Average(a => a.Desviacion).ToString("0.00")%
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -167,14 +234,14 @@
                 <!-- Botones de acción -->
                 <div class="col-md-12">
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" disabled="@_guardando">
+                        <button type="submit" class="btn btn-primary btn-lg" disabled="@(_guardando || !_actividadesConAvance.Any())">
                             @if (_guardando)
                             {
                                 <span class="spinner-border spinner-border-sm me-2"></span>
                             }
                             💾 Guardar Informe
                         </button>
-                        <a href="/informes-diarios/@ProyectoId" class="btn btn-outline-secondary">
+                        <a href="/informes-diarios/@ProyectoId" class="btn btn-outline-secondary btn-lg">
                             Cancelar
                         </a>
                     </div>
@@ -190,8 +257,7 @@
 
     private Proyecto? _proyecto;
     private InformeDiario _informe = new();
-    private List<RegistroAvanceDiario> _registrosAvance = new();
-    private List<ActividadWBS> _actividadesDisponibles = new();
+    private List<ActividadConAvance> _actividadesConAvance = new();
     private bool _cargando = true;
     private bool _guardando = false;
     private bool _esEdicion => InformeId.HasValue;
@@ -208,11 +274,6 @@
                 return;
             }
 
-            _actividadesDisponibles = await Db.ActividadesWBS
-                .Where(a => a.ProyectoId == ProyectoId && a.Activo)
-                .OrderBy(a => a.CodigoWBS)
-                .ToListAsync();
-
             if (_esEdicion && InformeId.HasValue)
             {
                 var informe = await Db.InformesDiarios
@@ -226,7 +287,7 @@
                 }
 
                 _informe = informe;
-                _registrosAvance = informe.RegistrosAvance.ToList();
+                await CargarActividadesConAvanceExistente();
             }
             else
             {
@@ -238,6 +299,7 @@
                     Version = "0.a",
                     CreadoPor = "Usuario Actual" // TODO: Obtener del contexto de Identity
                 };
+                await CargarActividadesNuevas();
             }
         }
         catch (Exception ex)
@@ -250,20 +312,71 @@
         }
     }
 
-    private void AgregarRegistroAvance()
+    private async Task CargarActividadesNuevas()
     {
-        _registrosAvance.Add(new RegistroAvanceDiario
+        var actividades = await Db.ActividadesWBS
+            .Where(a => a.ProyectoId == ProyectoId && a.Activo)
+            .OrderBy(a => a.CodigoWBS)
+            .ToListAsync();
+
+        _actividadesConAvance = actividades.Select(act => new ActividadConAvance
         {
-            ProyectoId = ProyectoId,
-            Fecha = _informe.Fecha,
-            ReportadoPor = _informe.CreadoPor
-        });
+            Actividad = act,
+            AvanceProgramado = InformeService.CalcularAvanceEsperado(act, _informe.Fecha),
+            AvanceReal = 0,
+            Desviacion = 0,
+            Estado = EstadoAvance.AlDia,
+            PersonalEnSitio = 0,
+            HorasTrabajadas = 0
+        }).ToList();
+
+        // Calcular desviaciones iniciales
+        foreach (var item in _actividadesConAvance)
+        {
+            RecalcularDesviacion(item);
+        }
     }
 
-    private void EliminarRegistroAvance(int index)
+    private async Task CargarActividadesConAvanceExistente()
     {
-        if (index >= 0 && index < _registrosAvance.Count)
-            _registrosAvance.RemoveAt(index);
+        var actividades = await Db.ActividadesWBS
+            .Where(a => a.ProyectoId == ProyectoId && a.Activo)
+            .OrderBy(a => a.CodigoWBS)
+            .ToListAsync();
+
+        var registrosExistentes = _informe.RegistrosAvance.ToList();
+
+        _actividadesConAvance = actividades.Select(act =>
+        {
+            var registroExistente = registrosExistentes.FirstOrDefault(r => r.ActividadWBSId == act.Id);
+
+            return new ActividadConAvance
+            {
+                Actividad = act,
+                AvanceProgramado = InformeService.CalcularAvanceEsperado(act, _informe.Fecha),
+                AvanceReal = registroExistente?.PorcentajeAvance ?? 0,
+                Desviacion = registroExistente?.Desviacion ?? 0,
+                Estado = registroExistente?.Estado ?? EstadoAvance.AlDia,
+                PersonalEnSitio = registroExistente?.PersonalEnSitio ?? 0,
+                HorasTrabajadas = registroExistente?.HorasTrabajadas ?? 0,
+                RegistroExistenteId = registroExistente?.Id
+            };
+        }).ToList();
+    }
+
+    private void RecalcularAvancesProgramados()
+    {
+        foreach (var item in _actividadesConAvance)
+        {
+            item.AvanceProgramado = InformeService.CalcularAvanceEsperado(item.Actividad, _informe.Fecha);
+            RecalcularDesviacion(item);
+        }
+    }
+
+    private void RecalcularDesviacion(ActividadConAvance item)
+    {
+        item.Desviacion = InformeService.CalcularDesviacion(item.AvanceReal, item.AvanceProgramado);
+        item.Estado = InformeService.DeterminarEstadoAvance(item.Desviacion);
     }
 
     private async Task GuardarAsync()
@@ -274,7 +387,6 @@
         try
         {
             // Validar certificado duplicado SOLO si es creación nueva
-            // Si es edición, permite el mismo certificado (nueva versión)
             if (!_esEdicion)
             {
                 var certificadoDuplicado = await Db.InformesDiarios
@@ -283,7 +395,7 @@
 
                 if (certificadoDuplicado)
                 {
-                    _error = $"Ya existe un informe con el número de certificado '{_informe.NumeroCertificado}' en este proyecto. Por favor, usa un número diferente.";
+                    _error = $"Ya existe un informe con el número de certificado '{_informe.NumeroCertificado}' en este proyecto.";
                     _guardando = false;
                     return;
                 }
@@ -291,9 +403,9 @@
 
             if (_esEdicion && InformeId.HasValue)
             {
-                // CREAR NUEVA VERSIÓN (no actualizar la existente)
+                // CREAR NUEVA VERSIÓN
                 var informeOriginal = await Db.InformesDiarios
-                    .AsNoTracking() // NO rastrear cambios del original
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(i => i.Id == InformeId.Value);
 
                 if (informeOriginal == null)
@@ -303,10 +415,8 @@
                     return;
                 }
 
-                // IMPORTANTE: Desvincular el _informe actual del contexto
                 Db.Entry(_informe).State = EntityState.Detached;
 
-                // Crear nuevo informe con versión incrementada
                 var nuevoInforme = new InformeDiario
                 {
                     ProyectoId = _informe.ProyectoId,
@@ -327,15 +437,7 @@
                 Db.InformesDiarios.Add(nuevoInforme);
                 await Db.SaveChangesAsync();
 
-                // Usar el nuevo informe para asociar registros de avance
                 _informe = nuevoInforme;
-
-                // IMPORTANTE: Resetear IDs de registros de avance para que se creen como nuevos
-                foreach (var registro in _registrosAvance)
-                {
-                    registro.Id = 0; // Forzar creación de nuevo registro
-                    registro.InformeDiarioId = 0; // Se asignará más adelante
-                }
             }
             else
             {
@@ -344,19 +446,30 @@
                 await Db.SaveChangesAsync();
             }
 
-            // Asociar registros de avance al informe
-            foreach (var registro in _registrosAvance)
+            // Guardar registros de avance desde la tabla
+            foreach (var item in _actividadesConAvance)
             {
-                registro.InformeDiarioId = _informe.Id;
-                registro.FechaCreacion = DateTime.UtcNow;
+                var registro = new RegistroAvanceDiario
+                {
+                    ProyectoId = ProyectoId,
+                    ActividadWBSId = item.Actividad.Id,
+                    InformeDiarioId = _informe.Id,
+                    Fecha = _informe.Fecha,
+                    PorcentajeAvance = item.AvanceReal,
+                    AvanceEsperado = item.AvanceProgramado,
+                    Desviacion = item.Desviacion,
+                    Estado = item.Estado,
+                    HorasTrabajadas = item.HorasTrabajadas,
+                    PersonalEnSitio = item.PersonalEnSitio,
+                    ReportadoPor = _informe.CreadoPor,
+                    FechaCreacion = DateTime.UtcNow
+                };
 
-                // Calcular campos automáticos
-                await InformeService.ActualizarCalculosRegistroAvanceAsync(registro);
+                // Calcular avance acumulado y días de atraso
+                registro.AvanceAcumulado = await InformeService.CalcularAvanceAcumuladoAsync(item.Actividad.Id, _informe.Fecha);
+                registro.DiasAtraso = InformeService.CalcularDiasAtraso(item.Actividad, registro.AvanceAcumulado, _informe.Fecha);
 
-                if (registro.Id == 0)
-                    Db.RegistrosAvanceDiario.Add(registro);
-                else
-                    Db.RegistrosAvanceDiario.Update(registro);
+                Db.RegistrosAvanceDiario.Add(registro);
             }
 
             await Db.SaveChangesAsync();
@@ -375,6 +488,35 @@
         }
     }
 
+    private string ObtenerIconoDisciplina(Disciplina disciplina) => disciplina switch
+    {
+        Disciplina.InicioContrato => "📋",
+        Disciplina.EstudiosIngenieria => "📐",
+        Disciplina.IngenieriaDetalle => "🔧",
+        Disciplina.Suministro => "📦",
+        Disciplina.ConstruccionCivil => "🏗️",
+        Disciplina.Mecanica => "⚙️",
+        Disciplina.Electrica => "⚡",
+        Disciplina.Pruebas => "🧪",
+        Disciplina.CierreContrato => "✅",
+        _ => "📁"
+    };
+
+    private string ObtenerIconoEstado(EstadoAvance estado) => estado switch
+    {
+        EstadoAvance.Adelantado => "🟢",
+        EstadoAvance.AlDia => "🟡",
+        EstadoAvance.Atrasado => "🔴",
+        _ => "⚪"
+    };
+
+    private string ObtenerClaseDesviacion(decimal desviacion) => desviacion switch
+    {
+        > 5 => "bg-success",
+        < -5 => "bg-danger",
+        _ => "bg-warning text-dark"
+    };
+
     private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
     {
         EstadoInforme.Borrador => "📝 Borrador",
@@ -384,4 +526,17 @@
         EstadoInforme.Anulado => "🚫 Anulado",
         _ => "Desconocido"
     };
+
+    // Clase auxiliar para manejar el estado de cada actividad en la interfaz
+    private class ActividadConAvance
+    {
+        public ActividadWBS Actividad { get; set; } = null!;
+        public decimal AvanceProgramado { get; set; }
+        public decimal AvanceReal { get; set; }
+        public decimal Desviacion { get; set; }
+        public EstadoAvance Estado { get; set; }
+        public int PersonalEnSitio { get; set; }
+        public decimal HorasTrabajadas { get; set; }
+        public int? RegistroExistenteId { get; set; }
+    }
 }
