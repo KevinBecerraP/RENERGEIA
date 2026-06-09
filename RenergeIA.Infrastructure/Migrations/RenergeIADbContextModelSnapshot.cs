@@ -589,6 +589,9 @@ namespace RenergeIA.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ComentarioCambio")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ComentariosGenerales")
                         .HasColumnType("nvarchar(max)");
 
@@ -641,8 +644,9 @@ namespace RenergeIA.Infrastructure.Migrations
                     b.Property<string>("RevisadoPor")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Version")
-                        .HasColumnType("int");
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

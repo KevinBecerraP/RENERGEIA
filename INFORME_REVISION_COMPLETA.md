@@ -442,6 +442,43 @@ Especificaciones detalladas del módulo Informe Diario (261 líneas). Contiene:
 
 ---
 
+## 📋 TAREAS PENDIENTES IDENTIFICADAS (09/06/2026)
+
+### ⏳ PRIORIDAD ALTA - En implementación
+
+**1. Control de Versiones en Informe Diario**
+- ✅ Sistema de versionado alfabético (0.a → 0.b → 0.c → 1.0 aprobada)
+- ⏳ Historial visible en 3 formas: línea de tiempo, tabs, dropdown
+- ⏳ Comparación entre versiones (diff de cambios)
+- ⏳ Auditoría completa de cambios
+- **Estado:** Iniciando implementación
+
+### 📋 PRIORIDAD MEDIA - Pendiente de datos del usuario
+
+**2. Sistema de Roles y Permisos en Informe Diario**
+- ❌ Definir matriz de permisos por rol (Residente, Supervisor, Gerente, Admin)
+- ❌ Implementar restricciones según rol
+- ❌ Crear usuarios de prueba
+- ❌ Validar flujo completo de aprobación
+- **Estado:** Pendiente - Requiere definición de roles y flujos
+
+**3. Mejoras en Módulo de Personal**
+- ❌ Plantilla recomendada según capacidad del proyecto (MW → cantidad personal)
+- ❌ Importación masiva desde Excel/CSV
+- ❌ Validaciones de formato y datos únicos
+- ❌ Campos definidos: Nombre, Cargo, Documento, Teléfono, Email, Especialidad, Otro
+- **Estado:** Pendiente - Requiere validación de números recomendados
+
+### 🔍 PRIORIDAD BAJA - Mejoras generales
+
+**4. Validaciones en todos los módulos**
+- ❌ Revisar validaciones de negocio en cada módulo
+- ❌ Estandarizar mensajes de error
+- ❌ Mejorar feedback visual al usuario
+- **Estado:** Planificado para revisión futura
+
+---
+
 ## 🎓 CONCLUSIÓN
 
 El proyecto **RenergeIA** está en **excelente estado**. La arquitectura es sólida, el código es limpio y bien estructurado, y la documentación es excepcional.

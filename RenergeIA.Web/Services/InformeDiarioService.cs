@@ -200,6 +200,77 @@ public class InformeDiarioService
 
         return puntos;
     }
+
+    /// <summary>
+    /// Calcula la siguiente versión alfabética
+    /// Ejemplos: "0.a" → "0.b", "0.z" → "0.aa", "0.c" → "0.d"
+    /// </summary>
+    public string SiguienteVersion(string versionActual)
+    {
+        if (string.IsNullOrEmpty(versionActual))
+            return "0.a";
+
+        var partes = versionActual.Split('.');
+        if (partes.Length != 2)
+            return "0.a";
+
+        var prefijo = partes[0];
+        var letra = partes[1];
+
+        // Incrementar letra alfabéticamente
+        var siguienteLetra = IncrementarLetra(letra);
+        return $"{prefijo}.{siguienteLetra}";
+    }
+
+    /// <summary>
+    /// Convierte una versión de desarrollo a versión aprobada
+    /// Ejemplo: "0.c" → "1.0", "1.b" → "2.0"
+    /// </summary>
+    public string ConvertirAVersionAprobada(string versionActual)
+    {
+        if (string.IsNullOrEmpty(versionActual))
+            return "1.0";
+
+        var partes = versionActual.Split('.');
+        if (partes.Length != 2 || !int.TryParse(partes[0], out var numero))
+            return "1.0";
+
+        return $"{numero + 1}.0";
+    }
+
+    /// <summary>
+    /// Determina si una versión es aprobada (formato X.0)
+    /// </summary>
+    public bool EsVersionAprobada(string version)
+    {
+        if (string.IsNullOrEmpty(version))
+            return false;
+
+        return version.EndsWith(".0");
+    }
+
+    private string IncrementarLetra(string letra)
+    {
+        if (string.IsNullOrEmpty(letra))
+            return "a";
+
+        // Si termina en 'z', agregar otra 'a' (a → b → ... → z → aa)
+        if (letra.All(c => c == 'z'))
+            return new string('a', letra.Length + 1);
+
+        var chars = letra.ToCharArray();
+        for (int i = chars.Length - 1; i >= 0; i--)
+        {
+            if (chars[i] < 'z')
+            {
+                chars[i]++;
+                break;
+            }
+            chars[i] = 'a';
+        }
+
+        return new string(chars);
+    }
 }
 
 public class ResumenDisciplina

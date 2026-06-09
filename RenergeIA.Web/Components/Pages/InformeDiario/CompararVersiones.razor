@@ -1,0 +1,505 @@
+@page "/informes-diarios/{ProyectoId:int}/{InformeId:int}/comparar"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Comparar Versiones - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>🔍 Comparar Versiones</h2>
+            @if (_informeActual is not null)
+            {
+                <p class="text-muted mb-0">
+                    Informe: <strong>@_informeActual.NumeroCertificado</strong>
+                </p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/informes-diarios/@ProyectoId/@InformeId/historial" class="btn btn-outline-secondary">
+                ← Volver al Historial
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border"></div>
+            <p class="mt-2 text-muted">Cargando versiones...</p>
+        </div>
+    }
+    else if (_historial.Count < 2)
+    {
+        <div class="alert alert-info">
+            <strong>ℹ️ No hay suficientes versiones para comparar</strong>
+            <p class="mb-0">Se necesitan al menos 2 versiones del mismo informe.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Selectores de versiones -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Versión A (anterior)</label>
+                        <select class="form-select" @onchange="CambiarVersionA">
+                            @foreach (var version in _historial)
+                            {
+                                <option value="@version.Id" selected="@(version.Id == _versionA?.Id)">
+                                    v@version.Version - @version.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Versión B (posterior)</label>
+                        <select class="form-select" @onchange="CambiarVersionB">
+                            @foreach (var version in _historial)
+                            {
+                                <option value="@version.Id" selected="@(version.Id == _versionB?.Id)">
+                                    v@version.Version - @version.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (_versionA is not null && _versionB is not null)
+        {
+            @if (_versionA.Id == _versionB.Id)
+            {
+                <div class="alert alert-warning">
+                    <strong>⚠️ Selecciona versiones diferentes para comparar</strong>
+                </div>
+            }
+            else
+            {
+                <!-- Comparación -->
+                <div class="row g-4">
+                    <!-- Columna Versión A -->
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">📄 Versión @_versionA.Version</h5>
+                                <small>@_versionA.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Estado</label>
+                                    <p>
+                                        <span class="badge @ObtenerClaseEstado(_versionA.Estado)">
+                                            @ObtenerTextoEstado(_versionA.Estado)
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Personal Total</label>
+                                    <p class="@(CambioDiferente(_versionA.PersonalTotal, _versionB.PersonalTotal) ? "bg-warning bg-opacity-25 p-2 rounded" : "")">
+                                        <strong>@_versionA.PersonalTotal</strong> personas
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Resumen de Actividades</label>
+                                    <p class="@(CambioDiferente(_versionA.ResumenActividades, _versionB.ResumenActividades) ? "bg-warning bg-opacity-25 p-2 rounded" : "")">
+                                        @_versionA.ResumenActividades
+                                    </p>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_versionA.Observaciones))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Observaciones</label>
+                                        <p class="@(CambioDiferente(_versionA.Observaciones, _versionB.Observaciones) ? "bg-warning bg-opacity-25 p-2 rounded" : "")">
+                                            @_versionA.Observaciones
+                                        </p>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_versionA.ComentarioCambio))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Comentario de Cambio</label>
+                                        <div class="alert alert-info mb-0">@_versionA.ComentarioCambio</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna Versión B -->
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">📄 Versión @_versionB.Version</h5>
+                                <small>@_versionB.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Estado</label>
+                                    <p>
+                                        <span class="badge @ObtenerClaseEstado(_versionB.Estado)">
+                                            @ObtenerTextoEstado(_versionB.Estado)
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Personal Total</label>
+                                    <p class="@(CambioDiferente(_versionA.PersonalTotal, _versionB.PersonalTotal) ? "bg-success bg-opacity-25 p-2 rounded" : "")">
+                                        <strong>@_versionB.PersonalTotal</strong> personas
+                                        @if (_versionA.PersonalTotal != _versionB.PersonalTotal)
+                                        {
+                                            var diferencia = _versionB.PersonalTotal - _versionA.PersonalTotal;
+                                            <span class="badge @(diferencia > 0 ? "bg-success" : "bg-danger") ms-2">
+                                                @diferencia.ToString("+0;-0;0")
+                                            </span>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Resumen de Actividades</label>
+                                    <p class="@(CambioDiferente(_versionA.ResumenActividades, _versionB.ResumenActividades) ? "bg-success bg-opacity-25 p-2 rounded" : "")">
+                                        @_versionB.ResumenActividades
+                                    </p>
+                                </div>
+                                @if (!string.IsNullOrEmpty(_versionB.Observaciones))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Observaciones</label>
+                                        <p class="@(CambioDiferente(_versionA.Observaciones, _versionB.Observaciones) ? "bg-success bg-opacity-25 p-2 rounded" : "")">
+                                            @_versionB.Observaciones
+                                        </p>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_versionB.ComentarioCambio))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Comentario de Cambio</label>
+                                        <div class="alert alert-info mb-0">@_versionB.ComentarioCambio</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen de cambios -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">📊 Resumen de Cambios</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!TieneCambios())
+                        {
+                            <p class="text-muted mb-0">No hay cambios entre estas versiones.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-unstyled mb-0">
+                                @if (_versionA.PersonalTotal != _versionB.PersonalTotal)
+                                {
+                                    var diferencia = _versionB.PersonalTotal - _versionA.PersonalTotal;
+                                    <li class="mb-2">
+                                        <strong>👥 Personal Total:</strong>
+                                        @_versionA.PersonalTotal → @_versionB.PersonalTotal
+                                        <span class="badge @(diferencia > 0 ? "bg-success" : "bg-danger")">
+                                            @diferencia.ToString("+0;-0")
+                                        </span>
+                                    </li>
+                                }
+                                @if (_versionA.ResumenActividades != _versionB.ResumenActividades)
+                                {
+                                    <li class="mb-2">
+                                        <strong>📝 Resumen de Actividades:</strong> Modificado
+                                    </li>
+                                }
+                                @if (_versionA.Observaciones != _versionB.Observaciones)
+                                {
+                                    <li class="mb-2">
+                                        <strong>💬 Observaciones:</strong> Modificadas
+                                    </li>
+                                }
+                                @if (_versionA.Estado != _versionB.Estado)
+                                {
+                                    <li class="mb-2">
+                                        <strong>📊 Estado:</strong>
+                                        @ObtenerTextoEstado(_versionA.Estado) → @ObtenerTextoEstado(_versionB.Estado)
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+
+                <!-- Comparación de Actividades -->
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">📊 Comparación de Actividades</h5>
+                    </div>
+                    <div class="card-body">
+                        @{
+                            var actividadesAgregadas = _actividadesB
+                                .Where(b => !_actividadesA.Any(a => a.ActividadWBSId == b.ActividadWBSId))
+                                .ToList();
+
+                            var actividadesEliminadas = _actividadesA
+                                .Where(a => !_actividadesB.Any(b => b.ActividadWBSId == a.ActividadWBSId))
+                                .ToList();
+
+                            var actividadesModificadas = _actividadesB
+                                .Where(b => _actividadesA.Any(a => a.ActividadWBSId == b.ActividadWBSId &&
+                                    (a.PorcentajeAvance != b.PorcentajeAvance ||
+                                     a.HorasTrabajadas != b.HorasTrabajadas ||
+                                     a.PersonalEnSitio != b.PersonalEnSitio)))
+                                .ToList();
+                        }
+
+                        @if (!actividadesAgregadas.Any() && !actividadesEliminadas.Any() && !actividadesModificadas.Any())
+                        {
+                            <p class="text-muted mb-0">No hay cambios en las actividades.</p>
+                        }
+                        else
+                        {
+                            @if (actividadesAgregadas.Any())
+                            {
+                                <div class="mb-4">
+                                    <h6 class="text-success">
+                                        <strong>✅ Actividades Agregadas (@actividadesAgregadas.Count)</strong>
+                                    </h6>
+                                    <ul class="list-group">
+                                        @foreach (var actividad in actividadesAgregadas)
+                                        {
+                                            <li class="list-group-item list-group-item-success">
+                                                <strong>@actividad.ActividadWBS.CodigoWBS</strong> - @actividad.ActividadWBS.Nombre
+                                                <span class="badge bg-success ms-2">Avance: @actividad.PorcentajeAvance%</span>
+                                                <span class="badge bg-info ms-1">Horas: @actividad.HorasTrabajadas h</span>
+                                                <span class="badge bg-secondary ms-1">Personal: @actividad.PersonalEnSitio</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (actividadesEliminadas.Any())
+                            {
+                                <div class="mb-4">
+                                    <h6 class="text-danger">
+                                        <strong>❌ Actividades Eliminadas (@actividadesEliminadas.Count)</strong>
+                                    </h6>
+                                    <ul class="list-group">
+                                        @foreach (var actividad in actividadesEliminadas)
+                                        {
+                                            <li class="list-group-item list-group-item-danger">
+                                                <strong>@actividad.ActividadWBS.CodigoWBS</strong> - @actividad.ActividadWBS.Nombre
+                                                <span class="badge bg-dark ms-2">Avance: @actividad.PorcentajeAvance%</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (actividadesModificadas.Any())
+                            {
+                                <div class="mb-4">
+                                    <h6 class="text-warning">
+                                        <strong>⚠️ Actividades Modificadas (@actividadesModificadas.Count)</strong>
+                                    </h6>
+                                    <ul class="list-group">
+                                        @foreach (var actividadB in actividadesModificadas)
+                                        {
+                                            var actividadA = _actividadesA.First(a => a.ActividadWBSId == actividadB.ActividadWBSId);
+                                            <li class="list-group-item list-group-item-warning">
+                                                <strong>@actividadB.ActividadWBS.CodigoWBS</strong> - @actividadB.ActividadWBS.Nombre
+                                                <div class="mt-2 small">
+                                                    @if (actividadA.PorcentajeAvance != actividadB.PorcentajeAvance)
+                                                    {
+                                                        <span class="badge bg-primary me-2">
+                                                            Avance: @actividadA.PorcentajeAvance% → @actividadB.PorcentajeAvance%
+                                                            (@(actividadB.PorcentajeAvance - actividadA.PorcentajeAvance).ToString("+0.00;-0.00")%)
+                                                        </span>
+                                                    }
+                                                    @if (actividadA.HorasTrabajadas != actividadB.HorasTrabajadas)
+                                                    {
+                                                        <span class="badge bg-info me-2">
+                                                            Horas: @actividadA.HorasTrabajadas → @actividadB.HorasTrabajadas h
+                                                        </span>
+                                                    }
+                                                    @if (actividadA.PersonalEnSitio != actividadB.PersonalEnSitio)
+                                                    {
+                                                        <span class="badge bg-secondary">
+                                                            Personal: @actividadA.PersonalEnSitio → @actividadB.PersonalEnSitio
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int InformeId { get; set; }
+
+    private InformeDiario? _informeActual;
+    private List<InformeDiario> _historial = new();
+    private InformeDiario? _versionA;
+    private InformeDiario? _versionB;
+    private List<RegistroAvanceDiario> _actividadesA = new();
+    private List<RegistroAvanceDiario> _actividadesB = new();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _informeActual = await Db.InformesDiarios.FindAsync(InformeId);
+            if (_informeActual is null)
+            {
+                Nav.NavigateTo($"/informes-diarios/{ProyectoId}");
+                return;
+            }
+
+            // Obtener historial completo
+            _historial = await ObtenerHistorialCompletoAsync(_informeActual);
+
+            if (_historial.Count >= 2)
+            {
+                // Por defecto, comparar las 2 últimas versiones
+                _versionA = _historial[^2]; // Penúltima
+                _versionB = _historial[^1]; // Última
+
+                await CargarActividadesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar las versiones: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task<List<InformeDiario>> ObtenerHistorialCompletoAsync(InformeDiario informe)
+    {
+        var historial = new List<InformeDiario> { informe };
+
+        // Buscar hacia atrás
+        var actualId = informe.InformeDiarioAnteriorId;
+        while (actualId.HasValue)
+        {
+            var anterior = await Db.InformesDiarios.FindAsync(actualId.Value);
+            if (anterior is null) break;
+            historial.Insert(0, anterior);
+            actualId = anterior.InformeDiarioAnteriorId;
+        }
+
+        // Buscar hacia adelante
+        var siguienteId = informe.Id;
+        while (true)
+        {
+            var siguiente = await Db.InformesDiarios
+                .FirstOrDefaultAsync(i => i.InformeDiarioAnteriorId == siguienteId);
+            if (siguiente is null) break;
+            historial.Add(siguiente);
+            siguienteId = siguiente.Id;
+        }
+
+        return historial;
+    }
+
+    private async Task CambiarVersionA(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            _versionA = _historial.FirstOrDefault(v => v.Id == id);
+            await CargarActividadesAsync();
+        }
+    }
+
+    private async Task CambiarVersionB(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            _versionB = _historial.FirstOrDefault(v => v.Id == id);
+            await CargarActividadesAsync();
+        }
+    }
+
+    private async Task CargarActividadesAsync()
+    {
+        if (_versionA != null)
+        {
+            _actividadesA = await Db.RegistrosAvanceDiario
+                .Include(r => r.ActividadWBS)
+                .Where(r => r.InformeDiarioId == _versionA.Id)
+                .ToListAsync();
+        }
+
+        if (_versionB != null)
+        {
+            _actividadesB = await Db.RegistrosAvanceDiario
+                .Include(r => r.ActividadWBS)
+                .Where(r => r.InformeDiarioId == _versionB.Id)
+                .ToListAsync();
+        }
+    }
+
+    private bool CambioDiferente(object? valorA, object? valorB)
+    {
+        if (valorA == null && valorB == null) return false;
+        if (valorA == null || valorB == null) return true;
+        return !valorA.Equals(valorB);
+    }
+
+    private bool TieneCambios()
+    {
+        if (_versionA is null || _versionB is null) return false;
+
+        return _versionA.PersonalTotal != _versionB.PersonalTotal ||
+               _versionA.ResumenActividades != _versionB.ResumenActividades ||
+               _versionA.Observaciones != _versionB.Observaciones ||
+               _versionA.Estado != _versionB.Estado;
+    }
+
+    private string ObtenerClaseEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "bg-secondary",
+        EstadoInforme.EnRevision => "bg-warning",
+        EstadoInforme.Aprobado => "bg-success",
+        EstadoInforme.Rechazado => "bg-danger",
+        EstadoInforme.Anulado => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝 Borrador",
+        EstadoInforme.EnRevision => "⏳ En Revisión",
+        EstadoInforme.Aprobado => "✅ Aprobado",
+        EstadoInforme.Rechazado => "❌ Rechazado",
+        EstadoInforme.Anulado => "🚫 Anulado",
+        _ => "Desconocido"
+    };
+}

@@ -1849,6 +1849,156 @@ Archivos modificados:
 6. UI para vincular restricciones (tabla M:N ya existe)
 7. Sistema de alertas automáticas por atrasos
 
+### 9.15 Control de versiones de informes - ✅ COMPLETADO (09/06/2026)
+
+**Requisito:** Sistema de versionado alfabético para informes diarios con trazabilidad completa.
+
+**Flujo de versiones implementado (Opción A):**
+```
+Informe CERT-2026-001:
+├─ v0.a (Borrador) ← Primera versión
+├─ v0.b (En Revisión) ← Con cambios/correcciones
+├─ v0.c (En Revisión) ← Más ajustes
+└─ v1.0 (Aprobado) ⭐ ← Versión OFICIAL
+```
+
+**Implementación:**
+
+1. **Modelo de datos actualizado:**
+   - Campo `Version` cambiado de `int` a `string` (para formato "0.a", "0.b", etc.)
+   - Campo `ComentarioCambio` agregado (documenta qué cambió en cada versión)
+   - Migración `20260609175401_ControlVersionesInformeDiario` aplicada
+
+2. **Servicio de versionado (InformeDiarioService.cs):**
+   - `SiguienteVersion()` → Incrementa versión (0.a → 0.b → 0.z → 0.aa)
+   - `ConvertirAVersionAprobada()` → Convierte a oficial (0.c → 1.0)
+   - `EsVersionAprobada()` → Verifica formato X.0
+
+3. **Lógica de versiones automáticas:**
+   - Al editar un informe, crea NUEVA versión (no sobrescribe)
+   - Copia datos del anterior + incrementa versión
+   - Vincula mediante `InformeDiarioAnteriorId`
+   - Campo "¿Qué cambió?" en formulario
+
+4. **Página de Historial (3 vistas):**
+   - **Línea de Tiempo:** Vista vertical con íconos de estado
+   - **Tabs:** Pestañas navegables entre versiones
+   - **Dropdown:** Selector con vista de detalle
+   - Acceso desde botón "Ver Historial" en detalle del informe
+
+**Archivos:**
+- `RenergeIA.Core/Entities/InformeDiario.cs`
+- `RenergeIA.Web/Services/InformeDiarioService.cs`
+- `RenergeIA.Web/Components/Pages/InformeDiario/CrearInformeDiario.razor`
+- `RenergeIA.Web/Components/Pages/InformeDiario/DetalleInformeDiario.razor`
+- `RenergeIA.Web/Components/Pages/InformeDiario/HistorialVersiones.razor` (nuevo)
+
+5. **Lista mejorada (ListaInformesDiarios.razor):**
+   - Muestra SOLO la última versión de cada certificado
+   - Filtra automáticamente versiones antiguas
+
+6. **Protección de eliminación:**
+   - NO permite eliminar informes con historial
+   - Solo se pueden eliminar informes sin versiones (0.a sin ediciones)
+
+7. **Comparación de versiones (CompararVersiones.razor) - NUEVO:**
+   - Selectores para 2 versiones
+   - Vista lado a lado
+   - Comparación de campos básicos + actividades
+   - Actividades agregadas/eliminadas/modificadas con colores
+
+8. **Estilos personalizados (informe-diario-styles.css) - NUEVO:**
+   - CSS inspirado en Solar Admin
+   - Colores RenergeIA
+   - Animaciones y transiciones
+   - **Pendiente de aplicar**
+
+**Bugs corregidos:**
+- ✅ Versiones se sobrescribían (fix: AsNoTracking + Detached)
+- ✅ Actividades no se copiaban (fix: resetear IDs a 0)
+- ✅ Validación bloqueaba ediciones (fix: validar solo al crear)
+- ✅ Lista mostraba todas las versiones (fix: filtrar últimas)
+
+**Estado:** ✅ COMPLETAMENTE FUNCIONAL
+
+---
+
+## ETAPA 6 — Módulo Personal: Mejoras Pendientes
+
+### Mejora 1: Plantilla de personal recomendada según capacidad del proyecto
+
+**Objetivo:** Sugerir cantidad y roles de personal según el tamaño del proyecto (kWp/MW).
+
+**Recomendaciones por capacidad:**
+| Capacidad | Personal Recomendado | Observaciones |
+|---|---|---|
+| < 5 MW | 15-20 personas | Proyecto pequeño |
+| 5-10 MW | 25-30 personas | Proyecto mediano |
+| 10-15 MW | 35-40 personas | Proyecto grande |
+| 15-20 MW | 45-50 personas | Proyecto muy grande |
+| > 20 MW | 60+ personas | Mega proyecto |
+
+**Dónde mostrar:**
+- Banner informativo en el módulo de Personal
+- Sugerencia al crear nuevo proyecto
+- Tooltip o ayuda contextual
+
+**Estado:** ⏳ Pendiente - Requiere validación de números reales con el equipo
+
+### Mejora 2: Importación masiva de personal desde Excel/CSV
+
+**Objetivo:** Permitir cargar múltiples personas a la vez desde archivo.
+
+**Campos requeridos en la plantilla:**
+1. Nombre (obligatorio)
+2. Cargo (obligatorio)
+3. Documento (obligatorio, único)
+4. Teléfono (opcional)
+5. Email (obligatorio, único, validar formato)
+6. Especialidad (obligatorio)
+7. Otro/Observaciones (opcional)
+
+**Validaciones a implementar:**
+- Formato correcto del archivo (Excel .xlsx o CSV)
+- Todos los campos obligatorios presentes
+- Documento y Email únicos (no duplicados en BD)
+- Formato de email válido
+- Si alguna fila falla validación, mostrar errores específicos
+- No guardar parcialmente (todo o nada)
+
+**Flujo propuesto:**
+1. Botón "📤 Importar Personal" en lista de personal
+2. Descargar plantilla de ejemplo
+3. Cargar archivo
+4. Validación en backend
+5. Mostrar preview de datos a importar
+6. Confirmar e importar
+7. Resumen: X personas importadas, Y errores
+
+**Estado:** ⏳ Pendiente - Requiere definir plantilla Excel final
+
+---
+
+## Sistema de Roles y Permisos — Pendiente de Definición
+
+### Matriz de permisos propuesta para Informe Diario
+
+| Rol | Crear | Editar Borrador | Enviar a Revisión | Aprobar | Rechazar | Anular | Ver |
+|---|---|---|---|---|---|---|---|
+| Residente de Obra | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Ingeniero Supervisor | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Gerente de Proyecto | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Admin | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Implementación requerida:**
+- Crear usuarios de prueba (Residente, Supervisor)
+- Aplicar restricciones en controladores/páginas
+- Botones condicionales según rol
+- Validación en backend (no solo frontend)
+- Auditoría de quién hizo qué acción
+
+**Estado:** ⏳ Pendiente - Requiere validación de roles y flujos con el equipo
+
 ---
 
 ## Cómo correr el proyecto en cualquier momento

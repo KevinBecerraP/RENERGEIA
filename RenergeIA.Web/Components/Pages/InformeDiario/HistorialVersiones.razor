@@ -1,0 +1,393 @@
+@page "/informes-diarios/{ProyectoId:int}/{InformeId:int}/historial"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Historial de Versiones - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>📚 Historial de Versiones</h2>
+            @if (_informeActual is not null)
+            {
+                <p class="text-muted mb-0">
+                    Informe: <strong>@_informeActual.NumeroCertificado</strong> |
+                    Versión actual: <strong>@_informeActual.Version</strong>
+                </p>
+            }
+        </div>
+        <div class="col-auto">
+            <a href="/informes-diarios/@ProyectoId/@InformeId" class="btn btn-outline-secondary">
+                ← Volver al Informe
+            </a>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border"></div>
+            <p class="mt-2 text-muted">Cargando historial...</p>
+        </div>
+    }
+    else if (!_historial.Any())
+    {
+        <div class="alert alert-info">
+            <strong>ℹ️ No hay historial disponible</strong>
+        </div>
+    }
+    else
+    {
+        <!-- Selector de vista -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn @(_vistaActual == VistaHistorial.LineaTiempo ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => _vistaActual = VistaHistorial.LineaTiempo">
+                        📊 Línea de Tiempo
+                    </button>
+                    <button type="button" class="btn @(_vistaActual == VistaHistorial.Tabs ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => _vistaActual = VistaHistorial.Tabs">
+                        📑 Pestañas
+                    </button>
+                    <button type="button" class="btn @(_vistaActual == VistaHistorial.Dropdown ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => _vistaActual = VistaHistorial.Dropdown">
+                        📋 Dropdown
+                    </button>
+                </div>
+                @if (_historial.Count >= 2)
+                {
+                    <a href="/informes-diarios/@ProyectoId/@InformeId/comparar" class="btn btn-outline-info ms-2">
+                        🔍 Comparar Versiones
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Vista: Línea de Tiempo -->
+        @if (_vistaActual == VistaHistorial.LineaTiempo)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="timeline">
+                        @foreach (var version in _historial)
+                        {
+                            <div class="timeline-item mb-4 pb-4 @(version == _historial.Last() ? "" : "border-bottom")">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="rounded-circle bg-@ObtenerColorEstado(version.Estado) text-white d-flex align-items-center justify-content-center"
+                                             style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                            @ObtenerIconoEstado(version.Estado)
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h5 class="mb-1">
+                                                    Versión <strong>@version.Version</strong>
+                                                    @if (version.Id == InformeId)
+                                                    {
+                                                        <span class="badge bg-primary ms-2">Actual</span>
+                                                    }
+                                                </h5>
+                                                <p class="text-muted mb-2">
+                                                    <small>
+                                                        📅 @version.FechaCreacion.ToString("dd/MM/yyyy HH:mm") |
+                                                        👤 @version.CreadoPor
+                                                    </small>
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span class="badge @ObtenerClaseEstado(version.Estado)">
+                                                    @ObtenerTextoEstado(version.Estado)
+                                                </span>
+                                            </div>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(version.ComentarioCambio))
+                                        {
+                                            <div class="alert alert-light mb-2">
+                                                <strong>💬 Cambios:</strong> @version.ComentarioCambio
+                                            </div>
+                                        }
+                                        <p class="mb-2">
+                                            <strong>Resumen:</strong> @(string.IsNullOrEmpty(version.ResumenActividades) ? "Sin resumen" : version.ResumenActividades[..Math.Min(150, version.ResumenActividades.Length)])@(version.ResumenActividades?.Length > 150 ? "..." : "")
+                                        </p>
+                                        <a href="/informes-diarios/@ProyectoId/@version.Id" class="btn btn-sm btn-outline-primary">
+                                            Ver versión completa
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Vista: Tabs (Pestañas) -->
+        @if (_vistaActual == VistaHistorial.Tabs)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        @foreach (var (version, index) in _historial.Select((v, i) => (v, i)))
+                        {
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(index == _tabActivo ? "active" : "")"
+                                        type="button"
+                                        @onclick="() => _tabActivo = index">
+                                    @version.Version
+                                    @if (version.Id == InformeId)
+                                    {
+                                        <span class="badge bg-primary ms-1">Actual</span>
+                                    }
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div class="card-body">
+                    @{
+                        var versionSeleccionada = _historial[_tabActivo];
+                    }
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Versión</label>
+                            <p class="mb-0"><strong>@versionSeleccionada.Version</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Estado</label>
+                            <p class="mb-0">
+                                <span class="badge @ObtenerClaseEstado(versionSeleccionada.Estado)">
+                                    @ObtenerTextoEstado(versionSeleccionada.Estado)
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Fecha de Creación</label>
+                            <p class="mb-0">@versionSeleccionada.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small">Creado Por</label>
+                            <p class="mb-0">@versionSeleccionada.CreadoPor</p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(versionSeleccionada.ComentarioCambio))
+                        {
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small">Comentario de Cambio</label>
+                                <div class="alert alert-info mb-0">@versionSeleccionada.ComentarioCambio</div>
+                            </div>
+                        }
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small">Resumen de Actividades</label>
+                            <p class="mb-0">@versionSeleccionada.ResumenActividades</p>
+                        </div>
+                        <div class="col-md-12">
+                            <a href="/informes-diarios/@ProyectoId/@versionSeleccionada.Id" class="btn btn-primary">
+                                Ver versión completa
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Vista: Dropdown -->
+        @if (_vistaActual == VistaHistorial.Dropdown)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Selecciona una versión:</label>
+                            <select class="form-select form-select-lg" @onchange="CambiarVersionDropdown">
+                                @foreach (var version in _historial)
+                                {
+                                    <option value="@version.Id" selected="@(version.Id == _versionDropdownSeleccionada?.Id)">
+                                        v@version.Version - @version.FechaCreacion.ToString("dd/MM/yyyy") - @ObtenerTextoEstado(version.Estado)
+                                        @(version.Id == InformeId ? " (Actual)" : "")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (_versionDropdownSeleccionada is not null)
+                    {
+                        <hr class="my-4" />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Versión</label>
+                                <p class="mb-0"><strong>@_versionDropdownSeleccionada.Version</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Estado</label>
+                                <p class="mb-0">
+                                    <span class="badge @ObtenerClaseEstado(_versionDropdownSeleccionada.Estado)">
+                                        @ObtenerTextoEstado(_versionDropdownSeleccionada.Estado)
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Fecha</label>
+                                <p class="mb-0">@_versionDropdownSeleccionada.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small">Creado Por</label>
+                                <p class="mb-0">@_versionDropdownSeleccionada.CreadoPor</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(_versionDropdownSeleccionada.ComentarioCambio))
+                            {
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small">Comentario</label>
+                                    <div class="alert alert-info mb-0">@_versionDropdownSeleccionada.ComentarioCambio</div>
+                                </div>
+                            }
+                            <div class="col-md-12">
+                                <a href="/informes-diarios/@ProyectoId/@_versionDropdownSeleccionada.Id" class="btn btn-primary">
+                                    Ver versión completa
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="mt-3 text-muted">
+            <small>Total de versiones: <strong>@_historial.Count</strong></small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+    [Parameter] public int InformeId { get; set; }
+
+    private InformeDiario? _informeActual;
+    private List<InformeDiario> _historial = new();
+    private bool _cargando = true;
+    private string? _error;
+
+    private VistaHistorial _vistaActual = VistaHistorial.LineaTiempo;
+    private int _tabActivo = 0;
+    private InformeDiario? _versionDropdownSeleccionada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _informeActual = await Db.InformesDiarios.FindAsync(InformeId);
+            if (_informeActual is null)
+            {
+                Nav.NavigateTo($"/informes-diarios/{ProyectoId}");
+                return;
+            }
+
+            // Obtener todas las versiones (anteriores y posteriores) del mismo certificado
+            _historial = await ObtenerHistorialCompletoAsync(_informeActual);
+            _versionDropdownSeleccionada = _historial.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar el historial: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task<List<InformeDiario>> ObtenerHistorialCompletoAsync(InformeDiario informe)
+    {
+        var historial = new List<InformeDiario> { informe };
+
+        // Buscar hacia atrás (versiones anteriores)
+        var actualId = informe.InformeDiarioAnteriorId;
+        while (actualId.HasValue)
+        {
+            var anterior = await Db.InformesDiarios.FindAsync(actualId.Value);
+            if (anterior is null) break;
+            historial.Insert(0, anterior);
+            actualId = anterior.InformeDiarioAnteriorId;
+        }
+
+        // Buscar hacia adelante (versiones posteriores)
+        var siguienteId = informe.Id;
+        while (true)
+        {
+            var siguiente = await Db.InformesDiarios
+                .FirstOrDefaultAsync(i => i.InformeDiarioAnteriorId == siguienteId);
+            if (siguiente is null) break;
+            historial.Add(siguiente);
+            siguienteId = siguiente.Id;
+        }
+
+        return historial;
+    }
+
+    private void CambiarVersionDropdown(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            _versionDropdownSeleccionada = _historial.FirstOrDefault(v => v.Id == id);
+        }
+    }
+
+    private string ObtenerClaseEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "bg-secondary",
+        EstadoInforme.EnRevision => "bg-warning",
+        EstadoInforme.Aprobado => "bg-success",
+        EstadoInforme.Rechazado => "bg-danger",
+        EstadoInforme.Anulado => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private string ObtenerTextoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝 Borrador",
+        EstadoInforme.EnRevision => "⏳ En Revisión",
+        EstadoInforme.Aprobado => "✅ Aprobado",
+        EstadoInforme.Rechazado => "❌ Rechazado",
+        EstadoInforme.Anulado => "🚫 Anulado",
+        _ => "Desconocido"
+    };
+
+    private string ObtenerColorEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "secondary",
+        EstadoInforme.EnRevision => "warning",
+        EstadoInforme.Aprobado => "success",
+        EstadoInforme.Rechazado => "danger",
+        EstadoInforme.Anulado => "dark",
+        _ => "secondary"
+    };
+
+    private string ObtenerIconoEstado(EstadoInforme estado) => estado switch
+    {
+        EstadoInforme.Borrador => "📝",
+        EstadoInforme.EnRevision => "⏳",
+        EstadoInforme.Aprobado => "✅",
+        EstadoInforme.Rechazado => "❌",
+        EstadoInforme.Anulado => "🚫",
+        _ => "❓"
+    };
+
+    private enum VistaHistorial
+    {
+        LineaTiempo,
+        Tabs,
+        Dropdown
+    }
+}

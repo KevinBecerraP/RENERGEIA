@@ -84,6 +84,14 @@
                                     <label class="form-label">Observaciones Generales</label>
                                     <InputTextArea @bind-Value="_informe.Observaciones" class="form-control" rows="2" />
                                 </div>
+                                @if (_esEdicion)
+                                {
+                                    <div class="col-md-12">
+                                        <label class="form-label">¿Qué cambió en esta versión? (Opcional)</label>
+                                        <InputTextArea @bind-Value="_informe.ComentarioCambio" class="form-control" rows="2" placeholder="Ej: Agregué actividad X, corregí cantidad de personal..." />
+                                        <small class="form-text text-muted">Esto ayuda a entender el historial de cambios</small>
+                                    </div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -227,7 +235,7 @@
                     ProyectoId = ProyectoId,
                     Fecha = DateTime.Today,
                     Estado = EstadoInforme.Borrador,
-                    Version = 1,
+                    Version = "0.a",
                     CreadoPor = "Usuario Actual" // TODO: Obtener del contexto de Identity
                 };
             }
@@ -265,30 +273,76 @@
 
         try
         {
-            // Validar que el número de certificado sea único en el proyecto
-            var certificadoDuplicado = await Db.InformesDiarios
-                .AnyAsync(i => i.ProyectoId == ProyectoId
-                    && i.NumeroCertificado == _informe.NumeroCertificado
-                    && i.Id != _informe.Id);
-
-            if (certificadoDuplicado)
+            // Validar certificado duplicado SOLO si es creación nueva
+            // Si es edición, permite el mismo certificado (nueva versión)
+            if (!_esEdicion)
             {
-                _error = $"Ya existe un informe con el número de certificado '{_informe.NumeroCertificado}' en este proyecto. Por favor, usa un número diferente.";
-                _guardando = false;
-                return;
+                var certificadoDuplicado = await Db.InformesDiarios
+                    .AnyAsync(i => i.ProyectoId == ProyectoId
+                        && i.NumeroCertificado == _informe.NumeroCertificado);
+
+                if (certificadoDuplicado)
+                {
+                    _error = $"Ya existe un informe con el número de certificado '{_informe.NumeroCertificado}' en este proyecto. Por favor, usa un número diferente.";
+                    _guardando = false;
+                    return;
+                }
             }
 
-            if (_esEdicion)
+            if (_esEdicion && InformeId.HasValue)
             {
-                Db.InformesDiarios.Update(_informe);
+                // CREAR NUEVA VERSIÓN (no actualizar la existente)
+                var informeOriginal = await Db.InformesDiarios
+                    .AsNoTracking() // NO rastrear cambios del original
+                    .FirstOrDefaultAsync(i => i.Id == InformeId.Value);
+
+                if (informeOriginal == null)
+                {
+                    _error = "No se encontró el informe original.";
+                    _guardando = false;
+                    return;
+                }
+
+                // IMPORTANTE: Desvincular el _informe actual del contexto
+                Db.Entry(_informe).State = EntityState.Detached;
+
+                // Crear nuevo informe con versión incrementada
+                var nuevoInforme = new InformeDiario
+                {
+                    ProyectoId = _informe.ProyectoId,
+                    Fecha = _informe.Fecha,
+                    NumeroCertificado = _informe.NumeroCertificado,
+                    ResumenActividades = _informe.ResumenActividades,
+                    PersonalTotal = _informe.PersonalTotal,
+                    Observaciones = _informe.Observaciones,
+                    CreadoPor = _informe.CreadoPor,
+                    Estado = _informe.Estado,
+                    Version = InformeService.SiguienteVersion(informeOriginal.Version),
+                    ComentarioCambio = _informe.ComentarioCambio,
+                    ComentariosGenerales = _informe.ComentariosGenerales,
+                    InformeDiarioAnteriorId = informeOriginal.Id,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                Db.InformesDiarios.Add(nuevoInforme);
+                await Db.SaveChangesAsync();
+
+                // Usar el nuevo informe para asociar registros de avance
+                _informe = nuevoInforme;
+
+                // IMPORTANTE: Resetear IDs de registros de avance para que se creen como nuevos
+                foreach (var registro in _registrosAvance)
+                {
+                    registro.Id = 0; // Forzar creación de nuevo registro
+                    registro.InformeDiarioId = 0; // Se asignará más adelante
+                }
             }
             else
             {
                 _informe.FechaCreacion = DateTime.UtcNow;
                 Db.InformesDiarios.Add(_informe);
+                await Db.SaveChangesAsync();
             }
-
-            await Db.SaveChangesAsync();
 
             // Asociar registros de avance al informe
             foreach (var registro in _registrosAvance)
@@ -311,7 +365,9 @@
         }
         catch (Exception ex)
         {
-            _error = $"Error al guardar: {ex.Message}";
+            var detalles = ex.InnerException?.Message ?? ex.Message;
+            _error = $"Error al guardar: {detalles}";
+            Console.WriteLine($"ERROR COMPLETO: {ex}");
         }
         finally
         {

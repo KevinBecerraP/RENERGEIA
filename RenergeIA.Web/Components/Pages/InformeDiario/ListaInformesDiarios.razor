@@ -172,10 +172,22 @@
                 return;
             }
 
-            _informes = await Db.InformesDiarios
+            // Cargar solo las versiones más recientes (las que no tienen versiones posteriores)
+            var todosLosInformes = await Db.InformesDiarios
                 .Where(i => i.ProyectoId == ProyectoId)
-                .OrderByDescending(i => i.Fecha)
                 .ToListAsync();
+
+            // Filtrar solo las que NO son referenciadas como "anterior" por otra versión
+            var idsConVersionesPosterior = todosLosInformes
+                .Where(i => i.InformeDiarioAnteriorId.HasValue)
+                .Select(i => i.InformeDiarioAnteriorId!.Value)
+                .Distinct()
+                .ToHashSet();
+
+            _informes = todosLosInformes
+                .Where(i => !idsConVersionesPosterior.Contains(i.Id))
+                .OrderByDescending(i => i.Fecha)
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -229,6 +241,20 @@
 
         try
         {
+            // VALIDACIÓN: No permitir eliminar si tiene historial de versiones
+            var tieneVersionAnterior = _informeAEliminar.InformeDiarioAnteriorId.HasValue;
+            var tieneVersionPosterior = await Db.InformesDiarios
+                .AnyAsync(i => i.InformeDiarioAnteriorId == _informeAEliminar.Id);
+
+            if (tieneVersionAnterior || tieneVersionPosterior)
+            {
+                _error = "⚠️ No se puede eliminar este informe porque tiene historial de versiones. " +
+                         "Para mantener la trazabilidad, las versiones con historial no pueden eliminarse. " +
+                         "Solo se pueden eliminar informes sin versiones anteriores ni posteriores.";
+                _eliminando = false;
+                return;
+            }
+
             // Primero eliminar los registros de avance asociados
             var registrosAvance = await Db.RegistrosAvanceDiario
                 .Where(r => r.InformeDiarioId == _informeAEliminar.Id)

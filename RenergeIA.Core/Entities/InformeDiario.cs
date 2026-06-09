@@ -18,7 +18,10 @@ public class InformeDiario : EntidadBase
     public string? RevisadoPor { get; set; }
     public DateTime? FechaRevision { get; set; }
     public string? MotivoRechazo { get; set; }
-    public int Version { get; set; } = 1;
+
+    // Control de versiones alfabético
+    public string Version { get; set; } = "0.a";
+    public string? ComentarioCambio { get; set; }
     public string? ComentariosGenerales { get; set; }
     public int? InformeDiarioAnteriorId { get; set; }
 

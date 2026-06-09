@@ -23,6 +23,9 @@
             }
         </div>
         <div class="col-auto">
+            <a href="/informes-diarios/@ProyectoId/@InformeId/historial" class="btn btn-info">
+                📚 Ver Historial
+            </a>
             @if (_informe?.Estado == EstadoInforme.Borrador)
             {
                 <a href="/informes-diarios/@ProyectoId/editar/@InformeId" class="btn btn-primary">

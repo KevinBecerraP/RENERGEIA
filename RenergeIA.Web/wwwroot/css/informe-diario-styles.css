@@ -1,0 +1,562 @@
+/* ===================================
+   ESTILOS PERSONALIZADOS INFORME DIARIO
+   Inspirados en Solar Admin Template
+   Con colores de RenergeIA
+   =================================== */
+
+/* Imports de fuentes */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Variables de colores RenergeIA */
+:root {
+    --renergeia-primary: #0d1b2a;
+    --renergeia-primary-light: #1b3a52;
+    --renergeia-secondary: #28a745;
+    --renergeia-info: #17a2b8;
+    --renergeia-warning: #ffc107;
+    --renergeia-danger: #dc3545;
+    --renergeia-light: #f8f9fa;
+    --renergeia-dark: #212529;
+    --renergeia-bg: #EAEDF7;
+    --renergeia-text: #0E0E23;
+    --renergeia-text-muted: #6c757d;
+
+    /* Gradientes */
+    --gradient-primary: linear-gradient(135deg, #0d1b2a 0%, #1b3a52 100%);
+    --gradient-success: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --gradient-info: linear-gradient(135deg, #17a2b8 0%, #00bcd4 100%);
+    --gradient-warning: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    --gradient-danger: linear-gradient(135deg, #dc3545 0%, #e91e63 100%);
+}
+
+/* Reset y base */
+.informe-container {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--renergeia-bg);
+    min-height: 100vh;
+}
+
+/* Cards mejoradas */
+.card-enhanced {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.card-enhanced:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-header-enhanced {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    padding: 20px 24px;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.card-header-enhanced .card-title {
+    margin: 0;
+    font-weight: 600;
+}
+
+.card-body-enhanced {
+    padding: 24px;
+}
+
+/* Badges mejorados */
+.badge-enhanced {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    letter-spacing: 0.3px;
+}
+
+.badge-version {
+    background: var(--gradient-info);
+    color: white;
+}
+
+.badge-estado-borrador {
+    background: #6c757d;
+    color: white;
+}
+
+.badge-estado-revision {
+    background: var(--gradient-warning);
+    color: white;
+}
+
+.badge-estado-aprobado {
+    background: var(--gradient-success);
+    color: white;
+}
+
+.badge-estado-rechazado {
+    background: var(--gradient-danger);
+    color: white;
+}
+
+/* Botones mejorados */
+.btn-enhanced {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-enhanced:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary-enhanced {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.btn-success-enhanced {
+    background: var(--gradient-success);
+    color: white;
+}
+
+.btn-info-enhanced {
+    background: var(--gradient-info);
+    color: white;
+}
+
+.btn-warning-enhanced {
+    background: var(--gradient-warning);
+    color: white;
+}
+
+.btn-danger-enhanced {
+    background: var(--gradient-danger);
+    color: white;
+}
+
+/* Tablas mejoradas */
+.table-enhanced {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table-enhanced thead {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.table-enhanced thead th {
+    border: none;
+    padding: 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.table-enhanced tbody tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.table-enhanced tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+}
+
+.table-enhanced tbody td {
+    padding: 16px;
+    vertical-align: middle;
+}
+
+/* Timeline mejorada */
+.timeline-enhanced {
+    position: relative;
+    padding-left: 40px;
+}
+
+.timeline-enhanced::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--renergeia-primary) 0%, var(--renergeia-info) 100%);
+}
+
+.timeline-item-enhanced {
+    position: relative;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.timeline-item-enhanced:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.timeline-item-enhanced::before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 25px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 4px solid var(--renergeia-primary);
+    box-shadow: 0 0 0 4px rgba(13, 27, 42, 0.1);
+}
+
+/* Comparación mejorada */
+.comparison-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 24px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.comparison-card:hover {
+    border-color: var(--renergeia-primary);
+    box-shadow: 0 5px 20px rgba(13, 27, 42, 0.15);
+}
+
+.comparison-card-header {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: white;
+    font-weight: 600;
+}
+
+.comparison-card-version-a {
+    background: var(--gradient-primary);
+}
+
+.comparison-card-version-b {
+    background: var(--gradient-success);
+}
+
+.comparison-highlight {
+    background-color: #fff3cd;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 4px solid var(--renergeia-warning);
+    transition: all 0.2s ease;
+}
+
+.comparison-highlight:hover {
+    background-color: #ffe69c;
+    transform: translateX(3px);
+}
+
+/* Actividades */
+.activity-item {
+    padding: 16px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.activity-item-added {
+    border-left-color: var(--renergeia-secondary);
+    background-color: #d4edda;
+}
+
+.activity-item-removed {
+    border-left-color: var(--renergeia-danger);
+    background-color: #f8d7da;
+}
+
+.activity-item-modified {
+    border-left-color: var(--renergeia-warning);
+    background-color: #fff3cd;
+}
+
+/* Stats cards */
+.stats-card {
+    padding: 24px;
+    border-radius: 12px;
+    background: white;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.stats-card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+}
+
+.stats-card-primary .stats-card-icon {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.stats-card-success .stats-card-icon {
+    background: var(--gradient-success);
+    color: white;
+}
+
+.stats-card-info .stats-card-icon {
+    background: var(--gradient-info);
+    color: white;
+}
+
+.stats-card-warning .stats-card-icon {
+    background: var(--gradient-warning);
+    color: white;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.slide-in-right {
+    animation: slideInRight 0.5s ease-out;
+}
+
+.pulse-animation {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Headers */
+.page-header-enhanced {
+    background: white;
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.page-title-enhanced {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--renergeia-text);
+}
+
+.page-subtitle-enhanced {
+    margin: 8px 0 0 0;
+    font-size: 0.9rem;
+    color: var(--renergeia-text-muted);
+}
+
+/* Tabs mejorados */
+.nav-tabs-enhanced {
+    border: none;
+    background: white;
+    padding: 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.nav-tabs-enhanced .nav-link {
+    border: none;
+    border-radius: 6px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: var(--renergeia-text);
+}
+
+.nav-tabs-enhanced .nav-link:hover {
+    background-color: #f8f9fa;
+}
+
+.nav-tabs-enhanced .nav-link.active {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+/* Selectores mejorados */
+.form-select-enhanced {
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-select-enhanced:focus {
+    border-color: var(--renergeia-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 27, 42, 0.15);
+}
+
+/* Alertas mejoradas */
+.alert-enhanced {
+    border: none;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid;
+}
+
+.alert-enhanced-success {
+    background-color: #d4edda;
+    border-left-color: var(--renergeia-secondary);
+    color: #155724;
+}
+
+.alert-enhanced-warning {
+    background-color: #fff3cd;
+    border-left-color: var(--renergeia-warning);
+    color: #856404;
+}
+
+.alert-enhanced-danger {
+    background-color: #f8d7da;
+    border-left-color: var(--renergeia-danger);
+    color: #721c24;
+}
+
+.alert-enhanced-info {
+    background-color: #d1ecf1;
+    border-left-color: var(--renergeia-info);
+    color: #0c5460;
+}
+
+/* Loading spinner */
+.spinner-enhanced {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(13, 27, 42, 0.1);
+    border-top-color: var(--renergeia-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-header-enhanced {
+        padding: 16px;
+        font-size: 1rem;
+    }
+
+    .card-body-enhanced {
+        padding: 16px;
+    }
+
+    .page-header-enhanced {
+        padding: 16px;
+    }
+
+    .page-title-enhanced {
+        font-size: 1.5rem;
+    }
+}
+
+/* Utilidades */
+.text-primary-enhanced {
+    color: var(--renergeia-primary) !important;
+}
+
+.text-success-enhanced {
+    color: var(--renergeia-secondary) !important;
+}
+
+.bg-primary-light {
+    background-color: rgba(13, 27, 42, 0.05);
+}
+
+.bg-success-light {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.bg-danger-light {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.shadow-enhanced {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.rounded-enhanced {
+    border-radius: 10px !important;
+}
