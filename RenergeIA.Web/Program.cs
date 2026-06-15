@@ -31,6 +31,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddScoped<RenergeIA.Web.Services.InformeDiarioService>();
 builder.Services.AddScoped<RenergeIA.Web.Services.DocumentoService>();
+builder.Services.AddScoped<RenergeIA.Web.Services.HistogramaService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -58,6 +59,10 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     await DatabaseSeeder.SeedRolesAndAdminAsync(roleManager, userManager);
+
+    // Inicializar datos de ejemplo de histogramas
+    var histogramaService = scope.ServiceProvider.GetRequiredService<RenergeIA.Web.Services.HistogramaService>();
+    await histogramaService.InicializarDatosEjemploAsync();
 }
 
 app.Run();

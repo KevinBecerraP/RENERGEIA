@@ -31,6 +31,8 @@ public class RenergeIADbContext : IdentityDbContext<ApplicationUser>
     public DbSet<RegistroAvancePersonal> RegistrosAvancePersonal => Set<RegistroAvancePersonal>();
     public DbSet<RegistroAvanceEquipo> RegistrosAvanceEquipo => Set<RegistroAvanceEquipo>();
     public DbSet<RegistroAvanceRestriccion> RegistrosAvanceRestriccion => Set<RegistroAvanceRestriccion>();
+    public DbSet<PlantillaHistograma> PlantillasHistogramas => Set<PlantillaHistograma>();
+    public DbSet<ItemHistograma> ItemsHistograma => Set<ItemHistograma>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -179,6 +181,42 @@ public class RenergeIADbContext : IdentityDbContext<ApplicationUser>
              .WithMany()
              .HasForeignKey(r => r.RestriccionId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PlantillaHistograma
+        modelBuilder.Entity<PlantillaHistograma>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Nombre).IsRequired().HasMaxLength(100);
+            e.Property(p => p.CapacidadMW).HasColumnType("decimal(6,2)");
+            e.Property(p => p.Descripcion).HasMaxLength(500);
+        });
+
+        // ItemHistograma
+        modelBuilder.Entity<ItemHistograma>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.CodigoCargo).HasMaxLength(50);
+            e.Property(i => i.Cargo).IsRequired().HasMaxLength(200);
+            e.Property(i => i.NombreHistograma).HasMaxLength(200);
+            e.Property(i => i.Actividad).HasMaxLength(300);
+            e.Property(i => i.TiempoMeses).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes1).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes2).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes3).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes4).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes5).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes6).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes7).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes8).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes9).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes10).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes11).HasColumnType("decimal(4,1)");
+            e.Property(i => i.Mes12).HasColumnType("decimal(4,1)");
+            e.HasOne(i => i.PlantillaHistograma)
+             .WithMany(p => p.Items)
+             .HasForeignKey(i => i.PlantillaHistogramaId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
