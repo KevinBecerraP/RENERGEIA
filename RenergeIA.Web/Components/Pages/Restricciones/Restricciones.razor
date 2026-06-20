@@ -1,0 +1,277 @@
+@page "/proyectos/{ProyectoId:int}/restricciones"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>Restricciones - @(_proyecto?.Nombre ?? "Proyecto") - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="p-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <h2 class="text-white mb-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Restricciones
+                </h2>
+                @if (_proyecto is not null)
+                {
+                    <p class="text-white mb-0 opacity-90">
+                        <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong>
+                    </p>
+                }
+            </div>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <a href="/proyectos/@ProyectoId" class="btn btn-light shadow-sm me-2">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+            <button class="btn btn-danger shadow-sm" @onclick="() => _mostrarModal = true">
+                <i class="bi bi-plus-circle"></i> Nueva Restricción
+            </button>
+        </div>
+    </div>
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Resumen -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-list-task fs-1 text-info"></i>
+                        <h6 class="text-muted mt-2">Total</h6>
+                        <h4 class="fw-bold">@_restricciones.Count</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clock-history fs-1 text-warning"></i>
+                        <h6 class="text-muted mt-2">Abiertas</h6>
+                        <h4 class="fw-bold text-warning">@_restricciones.Count(r => r.Estado == EstadoRestriccion.Abierta)</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                        <h6 class="text-muted mt-2">Levantadas</h6>
+                        <h4 class="fw-bold text-success">@_restricciones.Count(r => r.Estado == EstadoRestriccion.Levantada)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listado -->
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-header p-4" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <h5 class="mb-0 text-white fw-bold">
+                    <i class="bi bi-list-ul"></i> Listado de Restricciones
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                @if (!_restricciones.Any())
+                {
+                    <div class="alert alert-info m-4">
+                        <i class="bi bi-info-circle"></i> No hay restricciones registradas
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>N°</th>
+                                    <th>Descripción</th>
+                                    <th>Tipo</th>
+                                    <th>Responsable</th>
+                                    <th>F. Identificación</th>
+                                    <th>F. Compromiso</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in _restricciones.OrderByDescending(x => x.FechaIdentificacion))
+                                {
+                                    <tr>
+                                        <td><code>@r.Numero</code></td>
+                                        <td>@r.Descripcion</td>
+                                        <td><span class="badge bg-secondary">@r.Tipo</span></td>
+                                        <td>@r.Responsable</td>
+                                        <td>@r.FechaIdentificacion.ToString("dd/MM/yyyy")</td>
+                                        <td>@r.FechaCompromiso.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <span class="badge @BadgeEstado(r.Estado)">
+                                                @NombreEstado(r.Estado)
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (r.Estado != EstadoRestriccion.Levantada)
+                                            {
+                                                <button class="btn btn-sm btn-success" @onclick="() => LevantarAsync(r.Id)">
+                                                    <i class="bi bi-check-lg"></i> Levantar
+                                                </button>
+                                            }
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarAsync(r.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal crear -->
+@if (_mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva Restricción</h5>
+                    <button type="button" class="btn-close" @onclick="() => _mostrarModal = false"></button>
+                </div>
+                <EditForm Model="_nueva" OnValidSubmit="GuardarAsync">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Número:</label>
+                            <InputText @bind-Value="_nueva.Numero" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Descripción:</label>
+                            <InputTextArea @bind-Value="_nueva.Descripcion" class="form-control" rows="3" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Tipo:</label>
+                            <InputSelect @bind-Value="_nueva.Tipo" class="form-select">
+                                <option value="">Seleccione...</option>
+                                <option value="Meteorológica">Meteorológica</option>
+                                <option value="Administrativa">Administrativa</option>
+                                <option value="Técnica">Técnica</option>
+                                <option value="Financiera">Financiera</option>
+                                <option value="Permisos">Permisos</option>
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label>Responsable:</label>
+                            <InputText @bind-Value="_nueva.Responsable" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Fecha Compromiso:</label>
+                            <InputDate @bind-Value="_fechaCompromiso" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Plan de Acción:</label>
+                            <InputTextArea @bind-Value="_nueva.Plan" class="form-control" rows="2" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => _mostrarModal = false">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private bool _cargando = true;
+    private List<Restriccion> _restricciones = new();
+    private bool _mostrarModal;
+    private Restriccion _nueva = new();
+    private DateTime _fechaCompromiso = DateTime.Today.AddDays(7);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+        await CargarAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarAsync()
+    {
+        _restricciones = await Db.Restricciones
+            .Where(r => r.ProyectoId == ProyectoId)
+            .ToListAsync();
+    }
+
+    private async Task GuardarAsync()
+    {
+        _nueva.ProyectoId = ProyectoId;
+        _nueva.FechaIdentificacion = DateTime.Now;
+        _nueva.FechaCompromiso = _fechaCompromiso;
+        _nueva.Estado = EstadoRestriccion.Abierta;
+
+        Db.Restricciones.Add(_nueva);
+        await Db.SaveChangesAsync();
+
+        _mostrarModal = false;
+        _nueva = new();
+        _fechaCompromiso = DateTime.Today.AddDays(7);
+        await CargarAsync();
+    }
+
+    private async Task LevantarAsync(int id)
+    {
+        var r = await Db.Restricciones.FindAsync(id);
+        if (r != null)
+        {
+            r.Estado = EstadoRestriccion.Levantada;
+            r.FechaLevantamiento = DateTime.Now;
+            await Db.SaveChangesAsync();
+            await CargarAsync();
+        }
+    }
+
+    private async Task EliminarAsync(int id)
+    {
+        var r = await Db.Restricciones.FindAsync(id);
+        if (r != null)
+        {
+            Db.Restricciones.Remove(r);
+            await Db.SaveChangesAsync();
+            await CargarAsync();
+        }
+    }
+
+    private string BadgeEstado(EstadoRestriccion estado) => estado switch
+    {
+        EstadoRestriccion.Abierta => "bg-warning text-dark",
+        EstadoRestriccion.EnGestion => "bg-info",
+        EstadoRestriccion.Levantada => "bg-success",
+        EstadoRestriccion.Cancelada => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string NombreEstado(EstadoRestriccion estado) => estado switch
+    {
+        EstadoRestriccion.Abierta => "Abierta",
+        EstadoRestriccion.EnGestion => "En Gestión",
+        EstadoRestriccion.Levantada => "Levantada",
+        EstadoRestriccion.Cancelada => "Cancelada",
+        _ => "Desconocido"
+    };
+}
