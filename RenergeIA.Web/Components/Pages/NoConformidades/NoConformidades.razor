@@ -1,0 +1,332 @@
+@page "/proyectos/{ProyectoId:int}/no-conformidades"
+@rendermode InteractiveServer
+@inject RenergeIADbContext Db
+@inject NavigationManager Nav
+@using Microsoft.EntityFrameworkCore
+@using RenergeIA.Core.Entities
+@using RenergeIA.Core.Enums
+@using RenergeIA.Infrastructure.Data
+
+<PageTitle>No Conformidades - @(_proyecto?.Nombre ?? "Proyecto") - RenergeIA</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="p-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #f5576c 0%, #ff6348 100%);">
+                <h2 class="text-white mb-2">
+                    <i class="bi bi-exclamation-octagon-fill"></i> No Conformidades
+                </h2>
+                @if (_proyecto is not null)
+                {
+                    <p class="text-white mb-0 opacity-90">
+                        <strong>@_proyecto.Codigo - @_proyecto.Nombre</strong>
+                    </p>
+                }
+            </div>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <a href="/proyectos/@ProyectoId" class="btn btn-light shadow-sm me-2">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+            <button class="btn btn-danger shadow-sm" @onclick="() => _mostrarModal = true">
+                <i class="bi bi-plus-circle"></i> Nueva NC
+            </button>
+        </div>
+    </div>
+
+    @if (_cargando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-danger"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Resumen -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clipboard-data fs-1 text-info"></i>
+                        <h6 class="text-muted mt-2">Total</h6>
+                        <h4 class="fw-bold">@_noConformidades.Count</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-exclamation-triangle fs-1 text-danger"></i>
+                        <h6 class="text-muted mt-2">Críticas</h6>
+                        <h4 class="fw-bold text-danger">@_noConformidades.Count(n => n.Severidad == SeveridadNoConformidad.Critica)</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clock-history fs-1 text-warning"></i>
+                        <h6 class="text-muted mt-2">Abiertas</h6>
+                        <h4 class="fw-bold text-warning">@_noConformidades.Count(n => n.Estado == EstadoNoConformidad.Abierta)</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                        <h6 class="text-muted mt-2">Cerradas</h6>
+                        <h4 class="fw-bold text-success">@_noConformidades.Count(n => n.Estado == EstadoNoConformidad.Cerrada)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listado -->
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-header p-4" style="background: linear-gradient(135deg, #f5576c 0%, #ff6348 100%);">
+                <h5 class="mb-0 text-white fw-bold">
+                    <i class="bi bi-list-ul"></i> Listado de No Conformidades
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                @if (!_noConformidades.Any())
+                {
+                    <div class="alert alert-info m-4">
+                        <i class="bi bi-info-circle"></i> No hay no conformidades registradas
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>N°</th>
+                                    <th>Título</th>
+                                    <th>Categoría</th>
+                                    <th>Severidad</th>
+                                    <th>Detectado por</th>
+                                    <th>F. Detección</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var nc in _noConformidades.OrderByDescending(x => x.FechaDeteccion))
+                                {
+                                    <tr>
+                                        <td><code>@nc.Numero</code></td>
+                                        <td>
+                                            <strong>@nc.Titulo</strong>
+                                            <br /><small class="text-muted">@nc.Descripcion</small>
+                                        </td>
+                                        <td><span class="badge bg-secondary">@nc.Categoria</span></td>
+                                        <td>
+                                            <span class="badge @BadgeSeveridad(nc.Severidad)">
+                                                @NombreSeveridad(nc.Severidad)
+                                            </span>
+                                        </td>
+                                        <td>@nc.DetectadoPor</td>
+                                        <td>@nc.FechaDeteccion.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <span class="badge @BadgeEstado(nc.Estado)">
+                                                @NombreEstado(nc.Estado)
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (nc.Estado != EstadoNoConformidad.Cerrada)
+                                            {
+                                                <button class="btn btn-sm btn-success" @onclick="() => CerrarAsync(nc.Id)">
+                                                    <i class="bi bi-check-lg"></i> Cerrar
+                                                </button>
+                                            }
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarAsync(nc.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal crear -->
+@if (_mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva No Conformidad</h5>
+                    <button type="button" class="btn-close" @onclick="() => _mostrarModal = false"></button>
+                </div>
+                <EditForm Model="_nueva" OnValidSubmit="GuardarAsync">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label>Número:</label>
+                                    <InputText @bind-Value="_nueva.Numero" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label>Categoría:</label>
+                                    <InputSelect @bind-Value="_nueva.Categoria" class="form-select">
+                                        <option value="">Seleccione...</option>
+                                        <option value="Calidad">Calidad</option>
+                                        <option value="Seguridad">Seguridad</option>
+                                        <option value="Ambiental">Ambiental</option>
+                                        <option value="Técnica">Técnica</option>
+                                        <option value="Documental">Documental</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Título:</label>
+                            <InputText @bind-Value="_nueva.Titulo" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Descripción:</label>
+                            <InputTextArea @bind-Value="_nueva.Descripcion" class="form-control" rows="3" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label>Severidad:</label>
+                                    <InputSelect @bind-Value="_nueva.Severidad" class="form-select">
+                                        <option value="@SeveridadNoConformidad.Baja">Baja</option>
+                                        <option value="@SeveridadNoConformidad.Media">Media</option>
+                                        <option value="@SeveridadNoConformidad.Alta">Alta</option>
+                                        <option value="@SeveridadNoConformidad.Critica">Crítica</option>
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label>Detectado por:</label>
+                                    <InputText @bind-Value="_nueva.DetectadoPor" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Ubicación:</label>
+                            <InputText @bind-Value="_nueva.Ubicacion" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => _mostrarModal = false">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProyectoId { get; set; }
+
+    private Proyecto? _proyecto;
+    private bool _cargando = true;
+    private List<NoConformidad> _noConformidades = new();
+    private bool _mostrarModal;
+    private NoConformidad _nueva = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _proyecto = await Db.Proyectos.FindAsync(ProyectoId);
+        await CargarAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarAsync()
+    {
+        _noConformidades = await Db.NoConformidades
+            .Where(n => n.ProyectoId == ProyectoId)
+            .Include(n => n.AccionesCorrectivas)
+            .ToListAsync();
+    }
+
+    private async Task GuardarAsync()
+    {
+        _nueva.ProyectoId = ProyectoId;
+        _nueva.FechaDeteccion = DateTime.Now;
+        _nueva.Estado = EstadoNoConformidad.Abierta;
+
+        Db.NoConformidades.Add(_nueva);
+        await Db.SaveChangesAsync();
+
+        _mostrarModal = false;
+        _nueva = new();
+        await CargarAsync();
+    }
+
+    private async Task CerrarAsync(int id)
+    {
+        var nc = await Db.NoConformidades.FindAsync(id);
+        if (nc != null)
+        {
+            nc.Estado = EstadoNoConformidad.Cerrada;
+            nc.FechaCierre = DateTime.Now;
+            await Db.SaveChangesAsync();
+            await CargarAsync();
+        }
+    }
+
+    private async Task EliminarAsync(int id)
+    {
+        var nc = await Db.NoConformidades.FindAsync(id);
+        if (nc != null)
+        {
+            Db.NoConformidades.Remove(nc);
+            await Db.SaveChangesAsync();
+            await CargarAsync();
+        }
+    }
+
+    private string BadgeEstado(EstadoNoConformidad estado) => estado switch
+    {
+        EstadoNoConformidad.Abierta => "bg-warning text-dark",
+        EstadoNoConformidad.EnRevision => "bg-info",
+        EstadoNoConformidad.EnImplementacion => "bg-primary",
+        EstadoNoConformidad.Cerrada => "bg-success",
+        EstadoNoConformidad.Cancelada => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string NombreEstado(EstadoNoConformidad estado) => estado switch
+    {
+        EstadoNoConformidad.Abierta => "Abierta",
+        EstadoNoConformidad.EnRevision => "En Revisión",
+        EstadoNoConformidad.EnImplementacion => "En Implementación",
+        EstadoNoConformidad.Cerrada => "Cerrada",
+        EstadoNoConformidad.Cancelada => "Cancelada",
+        _ => "Desconocido"
+    };
+
+    private string BadgeSeveridad(SeveridadNoConformidad sev) => sev switch
+    {
+        SeveridadNoConformidad.Baja => "bg-success",
+        SeveridadNoConformidad.Media => "bg-warning text-dark",
+        SeveridadNoConformidad.Alta => "bg-orange text-white",
+        SeveridadNoConformidad.Critica => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string NombreSeveridad(SeveridadNoConformidad sev) => sev switch
+    {
+        SeveridadNoConformidad.Baja => "Baja",
+        SeveridadNoConformidad.Media => "Media",
+        SeveridadNoConformidad.Alta => "Alta",
+        SeveridadNoConformidad.Critica => "Crítica",
+        _ => "Desconocido"
+    };
+}
