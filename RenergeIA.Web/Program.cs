@@ -33,6 +33,7 @@ builder.Services.AddScoped<RenergeIA.Web.Services.InformeDiarioService>();
 builder.Services.AddScoped<RenergeIA.Web.Services.DocumentoService>();
 builder.Services.AddScoped<RenergeIA.Web.Services.HistogramaService>();
 builder.Services.AddScoped<RenergeIA.Web.Services.CostoService>();
+builder.Services.AddScoped<RenergeIA.Web.Services.AlertaServiceSimple>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
